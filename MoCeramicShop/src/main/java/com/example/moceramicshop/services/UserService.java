@@ -1,0 +1,19 @@
+package com.example.moceramicshop.services;
+
+import com.example.moceramicshop.dtos.request.user.ChangePasswordRequestDTO;
+import com.example.moceramicshop.dtos.request.user.CreateUserRequestDTO;
+import com.example.moceramicshop.dtos.request.user.UpdateProfileRequestDTO;
+import com.example.moceramicshop.dtos.request.user.UpdateUserRequestDTO;
+import com.example.moceramicshop.dtos.response.user.UserResponseDTO;
+
+import java.util.List;
+
+public interface UserService {
+    List<UserResponseDTO> getAllUsers();
+    UserResponseDTO getUserById(Long id);
+    UserResponseDTO create(CreateUserRequestDTO request);
+    UserResponseDTO updateUser(Long id, UpdateUserRequestDTO request);
+    void deleteUserById(Long id);
+    UserResponseDTO updateProfile(Long currentUserId, UpdateProfileRequestDTO request);
+    void changePassword(Long currentUserId, ChangePasswordRequestDTO request, String currentAccessToken);
+}
