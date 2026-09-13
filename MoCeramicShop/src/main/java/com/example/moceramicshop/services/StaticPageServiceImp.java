@@ -7,11 +7,13 @@ import com.example.moceramicshop.exceptions.ResourceNotFoundException;
 import com.example.moceramicshop.mappers.StaticPageMapper;
 import com.example.moceramicshop.models.StaticPage;
 import com.example.moceramicshop.repositories.StaticPageRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
 
+@Slf4j
 @Service
 public class StaticPageServiceImp implements StaticPageService {
 
@@ -47,7 +49,9 @@ public class StaticPageServiceImp implements StaticPageService {
         page.setSlug(dto.getSlug());
         page.setContent(dto.getContent());
         page.setUpdatedAt(Instant.now());
-        return staticPageMapper.toResponseDTO(staticPageRepository.saveAndFlush(page));
+        StaticPage saved = staticPageRepository.saveAndFlush(page);
+        log.info("Created static page id={} slug={}", saved.getId(), saved.getSlug());
+        return staticPageMapper.toResponseDTO(saved);
     }
 
     @Override
@@ -61,6 +65,7 @@ public class StaticPageServiceImp implements StaticPageService {
         page.setSlug(dto.getSlug());
         page.setContent(dto.getContent());
         page.setUpdatedAt(Instant.now());
+        log.info("Updated static page id={}", id);
         return staticPageMapper.toResponseDTO(staticPageRepository.saveAndFlush(page));
     }
 
@@ -70,6 +75,7 @@ public class StaticPageServiceImp implements StaticPageService {
             throw new ResourceNotFoundException("Không tìm thấy trang với id " + id);
         }
         staticPageRepository.deleteById(id);
+        log.info("Deleted static page id={}", id);
     }
 
     @Override

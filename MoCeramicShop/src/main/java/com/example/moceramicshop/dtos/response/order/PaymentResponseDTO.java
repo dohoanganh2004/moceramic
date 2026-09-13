@@ -14,6 +14,8 @@ import java.time.Instant;
 @AllArgsConstructor
 public class PaymentResponseDTO {
     private Long id;
+    private Long orderId;
+    private String orderCode;
     private String method;
     private BigDecimal amount;
     private String status;

@@ -1,6 +1,7 @@
 package com.example.moceramicshop.services;
 
 import com.example.moceramicshop.exceptions.BadRequestException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,6 +14,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @Service
 public class FileStorageServiceImp implements FileStorageService {
 
@@ -55,9 +57,11 @@ public class FileStorageServiceImp implements FileStorageService {
         try (InputStream in = file.getInputStream()) {
             Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
+            log.error("Failed to store file originalFilename={} target={}", file.getOriginalFilename(), target, e);
             throw new RuntimeException("Lưu file ảnh thất bại: " + file.getOriginalFilename(), e);
         }
 
+        log.info("Stored file {} as {}", file.getOriginalFilename(), storedName);
         return publicBasePath + "/" + storedName;
     }
 
@@ -74,8 +78,10 @@ public class FileStorageServiceImp implements FileStorageService {
         }
 
         try {
-            Files.deleteIfExists(target);
+            boolean deleted = Files.deleteIfExists(target);
+            log.info("Delete file {} -> existed={}", storedName, deleted);
         } catch (IOException e) {
+            log.error("Failed to delete file {}", storedName, e);
             throw new RuntimeException("Xóa file ảnh thất bại: " + storedName, e);
         }
     }

@@ -51,4 +51,7 @@ public class ProductVariant {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @OneToOne(mappedBy = "variant", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Inventory inventory;
+
 }

@@ -7,21 +7,29 @@ import com.example.moceramicshop.exceptions.ConflictException;
 import com.example.moceramicshop.exceptions.ResourceNotFoundException;
 import com.example.moceramicshop.mappers.ProductMapper;
 import com.example.moceramicshop.models.Category;
+import com.example.moceramicshop.models.Inventory;
 import com.example.moceramicshop.models.Product;
 import com.example.moceramicshop.models.ProductImage;
 import com.example.moceramicshop.models.ProductVariant;
 import com.example.moceramicshop.repositories.CategoryRepository;
 import com.example.moceramicshop.repositories.ProductRepository;
 import com.example.moceramicshop.repositories.ProductVariantRepository;
+import com.example.moceramicshop.specifications.ProductSpecification;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 @Service
 public class ProductServiceImp implements ProductService {
 
@@ -48,8 +56,29 @@ public class ProductServiceImp implements ProductService {
     @Override
     public List<ProductResponseDTO> getAllProducts() {
         return productRepository.findAll().stream()
+                .filter(this::hasStock)
                 .map(productMapper::toResponseDTO)
                 .toList();
+    }
+
+    private boolean hasStock(Product product) {
+        return product.getVariants().stream()
+                .anyMatch(variant -> variant.getInventory() != null
+                        && variant.getInventory().getQuantityOnHand() != null
+                        && variant.getInventory().getQuantityOnHand() > 0);
+    }
+
+    @Override
+    public Page<ProductResponseDTO> search(String search, Long categoryId, String status, BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable) {
+        Specification<Product> spec = Specification
+                .where(ProductSpecification.hasNameContaining(search))
+                .and(ProductSpecification.hasCategoryId(categoryId))
+                .and(ProductSpecification.hasStatus(status))
+                .and(ProductSpecification.hasMinPrice(minPrice))
+                .and(ProductSpecification.hasMaxPrice(maxPrice));
+        log.info("Searching products: search={} categoryId={} status={} minPrice={} maxPrice={} page={}",
+                search, categoryId, status, minPrice, maxPrice, pageable);
+        return productRepository.findAll(spec, pageable).map(productMapper::toResponseDTO);
     }
 
     @Override
@@ -84,7 +113,10 @@ public class ProductServiceImp implements ProductService {
         attachVariants(product, dto.getVariants());
         attachImages(product, files);
 
-        return productMapper.toResponseDTO(productRepository.saveAndFlush(product));
+        Product saved = productRepository.saveAndFlush(product);
+        log.info("Created product id={} slug={} with {} variant(s) and {} image(s)", saved.getId(), saved.getSlug(),
+                saved.getVariants().size(), saved.getImages().size());
+        return productMapper.toResponseDTO(saved);
     }
 
     @Override
@@ -110,6 +142,7 @@ public class ProductServiceImp implements ProductService {
         product.setBasePrice(dto.getBasePrice());
         product.setUpdatedAt(Instant.now());
 
+        log.info("Updated product id={}", id);
         return productMapper.toResponseDTO(productRepository.saveAndFlush(product));
     }
 
@@ -119,6 +152,7 @@ public class ProductServiceImp implements ProductService {
             throw new ResourceNotFoundException("Không tìm thấy sản phẩm với id " + id);
         }
         productRepository.deleteById(id);
+        log.info("Deleted product id={}", id);
     }
 
     private void attachVariants(Product product, List<ProductVariantRequestDTO> variantDtos) {
@@ -128,9 +162,11 @@ public class ProductServiceImp implements ProductService {
         Set<String> seenSkus = new HashSet<>();
         for (ProductVariantRequestDTO variantDto : variantDtos) {
             if (!seenSkus.add(variantDto.getSku())) {
+                log.warn("Duplicate SKU within request: {}", variantDto.getSku());
                 throw new ConflictException("SKU bị trùng trong danh sách biến thể: " + variantDto.getSku());
             }
             if (productVariantRepository.existsBySku(variantDto.getSku())) {
+                log.warn("SKU already exists: {}", variantDto.getSku());
                 throw new ConflictException("SKU đã tồn tại: " + variantDto.getSku());
             }
 
@@ -144,6 +180,14 @@ public class ProductServiceImp implements ProductService {
             variant.setDimensions(variantDto.getDimensions());
             variant.setCreatedAt(Instant.now());
             variant.setUpdatedAt(Instant.now());
+
+            Inventory inventory = new Inventory();
+            inventory.setVariant(variant);
+            inventory.setQuantityOnHand(variantDto.getQuantityOnHand() != null ? variantDto.getQuantityOnHand() : 0);
+            inventory.setQuantityReserved(0);
+            inventory.setUpdatedAt(Instant.now());
+            variant.setInventory(inventory);
+
             product.getVariants().add(variant);
         }
     }

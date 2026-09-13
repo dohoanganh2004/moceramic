@@ -4,6 +4,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -30,4 +31,7 @@ public class ProductVariantRequestDTO {
 
     @Size(max = 100, message = "Dimensions must be at most 100 characters")
     private String dimensions;
+
+    @PositiveOrZero(message = "Quantity on hand must be zero or greater")
+    private Integer quantityOnHand;
 }

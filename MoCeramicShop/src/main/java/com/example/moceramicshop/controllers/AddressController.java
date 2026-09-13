@@ -16,6 +16,12 @@ public class AddressController {
     public AddressController(AddressService addressService) {
         this.addressService = addressService;
     }
+
+    @GetMapping
+    public ResponseEntity<java.util.List<AddressResponseDTO>> getAll(@AuthenticationPrincipal CustomUserDetails currentUser) {
+        return ResponseEntity.ok(addressService.getAllByCurrentUser(currentUser.getUser().getId()));
+    }
+
 @PostMapping("/create")
     public ResponseEntity<AddressResponseDTO> create (@AuthenticationPrincipal CustomUserDetails currentUser,
                                                       @Valid @RequestBody AddressRequestDTO request) {

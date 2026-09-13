@@ -8,6 +8,8 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -15,6 +17,7 @@ import java.time.Instant;
 @Table(name = "reviews")
 public class Review {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Long id;
 
@@ -25,7 +28,7 @@ public class Review {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
-    private com.example.moceramicshop.models.User user;
+    private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_item_id")
@@ -50,4 +53,6 @@ public class Review {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @OneToMany(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ReviewImage> images = new ArrayList<>();
 }

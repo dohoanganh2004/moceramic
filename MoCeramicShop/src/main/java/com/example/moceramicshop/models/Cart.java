@@ -8,6 +8,8 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -15,6 +17,7 @@ import java.time.Instant;
 @Table(name = "carts")
 public class Cart {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Long id;
 
@@ -38,4 +41,6 @@ public class Cart {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CartItem> items = new ArrayList<>();
 }

@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -52,9 +54,19 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, "Malformed request body", request);
     }
 
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, "Số điện thoại hoặc mật khẩu không đúng", request);
+    }
+
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ErrorResponse> handleDisabledAccount(DisabledException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, "Tài khoản của bạn đã bị vô hiệu hóa", request);
+    }
+
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthenticationException(AuthenticationException ex, HttpServletRequest request) {
-        return buildResponse(HttpStatus.UNAUTHORIZED, "Authentication required", request);
+        return buildResponse(HttpStatus.UNAUTHORIZED, "Vui lòng đăng nhập để tiếp tục", request);
     }
 
     @ExceptionHandler(AccessDeniedException.class)

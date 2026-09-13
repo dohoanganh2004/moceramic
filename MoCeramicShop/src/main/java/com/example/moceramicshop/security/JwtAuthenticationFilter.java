@@ -45,12 +45,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     Long userId = jwtTokenProvider.getUserIdFromToken(token);
                     User user = userRepository.findWithRoleById(userId).orElse(null);
 
-                    if (user != null) {
+                    if (user != null && Boolean.TRUE.equals(user.getIsActive())) {
                         CustomUserDetails userDetails = new CustomUserDetails(user);
                         UsernamePasswordAuthenticationToken authentication =
                                 new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                         SecurityContextHolder.getContext().setAuthentication(authentication);
+                    } else if (user != null) {
+                        log.warn("Rejected request from banned userId={}", user.getId());
                     }
                 }
             } catch (JwtException | IllegalArgumentException e) {

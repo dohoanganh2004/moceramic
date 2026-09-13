@@ -15,6 +15,7 @@ import java.time.Instant;
 @Table(name = "wishlists")
 public class Wishlist {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Long id;
 

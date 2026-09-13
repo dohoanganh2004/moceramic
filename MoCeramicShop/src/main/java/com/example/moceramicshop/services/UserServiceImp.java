@@ -13,12 +13,18 @@ import com.example.moceramicshop.models.Role;
 import com.example.moceramicshop.models.User;
 import com.example.moceramicshop.repositories.RoleRepository;
 import com.example.moceramicshop.repositories.UserRepository;
+import com.example.moceramicshop.specifications.UserSpecification;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
 
+@Slf4j
 @Service
 public class UserServiceImp implements UserService {
     private final UserRepository userRepository;
@@ -41,6 +47,16 @@ public class UserServiceImp implements UserService {
         return userRepository.findAll().stream()
                 .map(userMapper::toUserResponseDTO)
                 .toList();
+    }
+
+    @Override
+    public Page<UserResponseDTO> search(String search, Integer roleId, Boolean isActive, Pageable pageable) {
+        Specification<User> spec = Specification
+                .where(UserSpecification.hasNameEmailOrPhoneContaining(search))
+                .and(UserSpecification.hasRoleId(roleId))
+                .and(UserSpecification.hasIsActive(isActive));
+        log.info("Searching users: search={} roleId={} isActive={} page={}", search, roleId, isActive, pageable);
+        return userRepository.findAll(spec, pageable).map(userMapper::toUserResponseDTO);
     }
 
     @Override
@@ -75,6 +91,7 @@ public class UserServiceImp implements UserService {
         user.setUpdatedAt(Instant.now());
 
         User savedUser = userRepository.saveAndFlush(user);
+        log.info("Created user id={} email={} roleId={}", savedUser.getId(), savedUser.getEmail(), request.getRoleId());
         return userMapper.toUserResponseDTO(userRepository.findWithRoleById(savedUser.getId()).orElseThrow());
     }
 
@@ -105,6 +122,7 @@ public class UserServiceImp implements UserService {
         user.setUpdatedAt(Instant.now());
 
         User savedUser = userRepository.saveAndFlush(user);
+        log.info("Updated user id={}", id);
         return userMapper.toUserResponseDTO(userRepository.findWithRoleById(savedUser.getId()).orElseThrow());
     }
 
@@ -114,6 +132,7 @@ public class UserServiceImp implements UserService {
             throw new ResourceNotFoundException("Không tìm thấy user với id " + id);
         }
         userRepository.deleteById(id);
+        log.info("Deleted user id={}", id);
     }
 
     @Override
@@ -127,6 +146,7 @@ public class UserServiceImp implements UserService {
         user.setUpdatedAt(Instant.now());
 
         User savedUser = userRepository.saveAndFlush(user);
+        log.info("Updated profile for userId={}", currentUserId);
         return userMapper.toUserResponseDTO(userRepository.findWithRoleById(savedUser.getId()).orElseThrow());
     }
 
@@ -136,6 +156,7 @@ public class UserServiceImp implements UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user với id " + currentUserId));
 
         if (user.getPasswordHash() == null || !passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            log.warn("Failed change-password attempt for userId={}: current password mismatch", currentUserId);
             throw new BadRequestException("Mật khẩu hiện tại không đúng");
         }
         if (!request.getNewPassword().equals(request.getConfirmNewPassword())) {
@@ -147,5 +168,30 @@ public class UserServiceImp implements UserService {
         userRepository.saveAndFlush(user);
 
         authService.blacklistAccessToken(currentAccessToken);
+        log.info("Password changed for userId={}, previous access token blacklisted", currentUserId);
+    }
+
+    @Override
+    public UserResponseDTO banUser(Long id) {
+        User user = userRepository.findWithRoleById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user với id " + id));
+
+        user.setIsActive(false);
+        user.setUpdatedAt(Instant.now());
+        userRepository.saveAndFlush(user);
+        log.info("Banned userId={}", id);
+        return userMapper.toUserResponseDTO(user);
+    }
+
+    @Override
+    public UserResponseDTO unbanUser(Long id) {
+        User user = userRepository.findWithRoleById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user với id " + id));
+
+        user.setIsActive(true);
+        user.setUpdatedAt(Instant.now());
+        userRepository.saveAndFlush(user);
+        log.info("Unbanned userId={}", id);
+        return userMapper.toUserResponseDTO(user);
     }
 }

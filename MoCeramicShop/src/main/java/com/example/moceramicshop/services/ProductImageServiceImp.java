@@ -7,12 +7,14 @@ import com.example.moceramicshop.models.Product;
 import com.example.moceramicshop.models.ProductImage;
 import com.example.moceramicshop.repositories.ProductImageRepository;
 import com.example.moceramicshop.repositories.ProductRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
+@Slf4j
 @Service
 public class ProductImageServiceImp implements ProductImageService {
 
@@ -58,7 +60,9 @@ public class ProductImageServiceImp implements ProductImageService {
         newImage.setSortOrder(nextSortOrder);
         newImage.setIsPrimary(primary);
 
-        return productImageMapper.toResponseDTO(productImageRepository.saveAndFlush(newImage));
+        ProductImage saved = productImageRepository.saveAndFlush(newImage);
+        log.info("Added image id={} to productId={} isPrimary={}", saved.getId(), productId, primary);
+        return productImageMapper.toResponseDTO(saved);
     }
 
     @Override
@@ -85,5 +89,6 @@ public class ProductImageServiceImp implements ProductImageService {
         }
 
         fileStorageService.delete(imageUrl);
+        log.info("Deleted image id={} from productId={}", imageId, productId);
     }
 }

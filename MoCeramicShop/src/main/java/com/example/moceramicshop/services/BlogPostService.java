@@ -9,6 +9,7 @@ import java.util.List;
 
 public interface BlogPostService {
     List<BlogPostResponseDTO> getAllPosts();
+    Page<BlogPostResponseDTO> search(String search, String status, Pageable pageable);
     BlogPostResponseDTO getPostById(Long id);
     BlogPostResponseDTO create(BlogPostRequestDTO dto, Long authorUserId);
     BlogPostResponseDTO update(Long id, BlogPostRequestDTO dto);

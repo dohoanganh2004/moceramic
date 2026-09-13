@@ -15,6 +15,7 @@ import java.time.Instant;
 @Table(name = "custom_order_attachments")
 public class CustomOrderAttachment {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Long id;
 

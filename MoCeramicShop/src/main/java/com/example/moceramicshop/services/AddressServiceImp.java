@@ -9,12 +9,15 @@ import com.example.moceramicshop.models.Address;
 import com.example.moceramicshop.models.User;
 import com.example.moceramicshop.repositories.AddressRepository;
 import com.example.moceramicshop.repositories.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 
+@Slf4j
 @Service
 public class AddressServiceImp implements AddressService {
     private final UserRepository userRepository;
@@ -26,6 +29,15 @@ public class AddressServiceImp implements AddressService {
         this.addressRepository = addressRepository;
         this.addressMapper = addressMapper;
 
+    }
+
+    @Override
+    public List<AddressResponseDTO> getAllByCurrentUser(Long currentUserID) {
+        log.info("Fetching addresses for userId={}", currentUserID);
+        return addressRepository.findByUser_Id(currentUserID).stream()
+                .sorted(Comparator.comparing(Address::getIsDefault, Comparator.nullsLast(Comparator.reverseOrder())))
+                .map(addressMapper::toResponseDTO)
+                .toList();
     }
 
     @Override
@@ -45,6 +57,7 @@ public class AddressServiceImp implements AddressService {
         address.setCreatedAt(Instant.now());
         address.setUpdatedAt(Instant.now());
         addressRepository.save(address);
+        log.info("Created address id={} for userId={}", address.getId(), currentUserID);
         return addressMapper.toResponseDTO(address);
     }
 
@@ -53,6 +66,7 @@ public class AddressServiceImp implements AddressService {
         Address address = addressRepository.getAddressById(id);
         if (address == null) throw new ResourceNotFoundException("Không tìm thấy địa chỉ với id " + id);
         if (!address.getUser().getId().equals(currentUserID)) {
+            log.warn("User {} attempted to update address {} owned by user {}", currentUserID, id, address.getUser().getId());
             throw new ForbiddenException("Bạn không có quyền sửa địa chỉ này");
         }
 
@@ -67,6 +81,7 @@ public class AddressServiceImp implements AddressService {
         }
         address.setUpdatedAt(Instant.now());
 
+        log.info("Updated address id={} for userId={}", id, currentUserID);
         return addressMapper.toResponseDTO(addressRepository.saveAndFlush(address));
     }
 
@@ -76,6 +91,7 @@ public class AddressServiceImp implements AddressService {
         Address target = addressRepository.getAddressById(id);
         if (target == null) throw new ResourceNotFoundException("Không tìm thấy địa chỉ với id " + id);
         if (!target.getUser().getId().equals(currentUserID)) {
+            log.warn("User {} attempted to set default on address {} owned by user {}", currentUserID, id, target.getUser().getId());
             throw new ForbiddenException("Bạn không có quyền cập nhật địa chỉ này");
         }
 
@@ -86,16 +102,20 @@ public class AddressServiceImp implements AddressService {
         }
         addressRepository.saveAll(userAddresses);
 
+        log.info("Set address id={} as default for userId={}", id, currentUserID);
         return addressMapper.toResponseDTO(addressRepository.getAddressById(id));
     }
 
     @Override
     public AddressResponseDTO delete(Long currentUserID, Long id) {
-        User user = userRepository.getUserById(currentUserID);
-        if(user == null) throw  new RuntimeException("User not found");
         Address address = addressRepository.getAddressById(id);
-        if(address == null) throw  new RuntimeException("Address not found");
+        if (address == null) throw new ResourceNotFoundException("Không tìm thấy địa chỉ với id " + id);
+        if (!address.getUser().getId().equals(currentUserID)) {
+            log.warn("User {} attempted to delete address {} owned by user {}", currentUserID, id, address.getUser().getId());
+            throw new ForbiddenException("Bạn không có quyền xóa địa chỉ này");
+        }
         addressRepository.delete(address);
+        log.info("Deleted address id={} for userId={}", id, currentUserID);
         return null;
     }
 }

@@ -6,11 +6,13 @@ import com.example.moceramicshop.exceptions.ResourceNotFoundException;
 import com.example.moceramicshop.mappers.BannerMapper;
 import com.example.moceramicshop.models.Banner;
 import com.example.moceramicshop.repositories.BannerRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
 
+@Slf4j
 @Service
 public class BannerServiceImp implements BannerService {
 
@@ -40,7 +42,9 @@ public class BannerServiceImp implements BannerService {
     public BannerResponseDTO create(BannerRequestDTO dto) {
         Banner banner = new Banner();
         applyRequest(banner, dto);
-        return bannerMapper.toResponseDTO(bannerRepository.saveAndFlush(banner));
+        Banner saved = bannerRepository.saveAndFlush(banner);
+        log.info("Created banner id={}", saved.getId());
+        return bannerMapper.toResponseDTO(saved);
     }
 
     @Override
@@ -48,6 +52,7 @@ public class BannerServiceImp implements BannerService {
         Banner banner = bannerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy banner với id " + id));
         applyRequest(banner, dto);
+        log.info("Updated banner id={}", id);
         return bannerMapper.toResponseDTO(bannerRepository.saveAndFlush(banner));
     }
 
@@ -57,6 +62,7 @@ public class BannerServiceImp implements BannerService {
             throw new ResourceNotFoundException("Không tìm thấy banner với id " + id);
         }
         bannerRepository.deleteById(id);
+        log.info("Deleted banner id={}", id);
     }
 
     @Override

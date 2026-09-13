@@ -8,11 +8,17 @@ import com.example.moceramicshop.exceptions.ResourceNotFoundException;
 import com.example.moceramicshop.mappers.CategoryMapper;
 import com.example.moceramicshop.models.Category;
 import com.example.moceramicshop.repositories.CategoryRepository;
+import com.example.moceramicshop.specifications.CategorySpecification;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
 
+@Slf4j
 @Service
 public class CategoryServiceImp implements CategoryService {
 
@@ -29,6 +35,15 @@ public class CategoryServiceImp implements CategoryService {
         return categoryRepository.findAll().stream()
                 .map(categoryMapper::toResponseDTO)
                 .toList();
+    }
+
+    @Override
+    public Page<CategoryResponseDTO> search(String search, Long parentId, Pageable pageable) {
+        Specification<Category> spec = Specification
+                .where(CategorySpecification.hasNameContaining(search))
+                .and(CategorySpecification.hasParentId(parentId));
+        log.info("Searching categories: search={} parentId={} page={}", search, parentId, pageable);
+        return categoryRepository.findAll(spec, pageable).map(categoryMapper::toResponseDTO);
     }
 
     @Override
@@ -54,7 +69,9 @@ public class CategoryServiceImp implements CategoryService {
         category.setCreatedAt(Instant.now());
         category.setUpdatedAt(Instant.now());
 
-        return categoryMapper.toResponseDTO(categoryRepository.saveAndFlush(category));
+        Category saved = categoryRepository.saveAndFlush(category);
+        log.info("Created category id={} slug={}", saved.getId(), saved.getSlug());
+        return categoryMapper.toResponseDTO(saved);
     }
 
     @Override
@@ -74,6 +91,7 @@ public class CategoryServiceImp implements CategoryService {
         category.setSortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : 0);
         category.setUpdatedAt(Instant.now());
 
+        log.info("Updated category id={}", id);
         return categoryMapper.toResponseDTO(categoryRepository.saveAndFlush(category));
     }
 
@@ -83,6 +101,7 @@ public class CategoryServiceImp implements CategoryService {
             throw new ResourceNotFoundException("Không tìm thấy danh mục với id " + id);
         }
         categoryRepository.deleteById(id);
+        log.info("Deleted category id={}", id);
     }
 
     @Override

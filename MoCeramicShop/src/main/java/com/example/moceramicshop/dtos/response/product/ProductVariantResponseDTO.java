@@ -19,4 +19,6 @@ public class ProductVariantResponseDTO {
     private BigDecimal price;
     private Integer weightGrams;
     private String dimensions;
+    private Integer quantityOnHand;
+    private Integer quantityReserved;
 }

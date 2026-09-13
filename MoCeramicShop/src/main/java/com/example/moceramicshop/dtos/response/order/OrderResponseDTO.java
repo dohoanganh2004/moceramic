@@ -1,5 +1,6 @@
 package com.example.moceramicshop.dtos.response.order;
 
+import com.example.moceramicshop.dtos.response.shipment.ShipmentResponseDTO;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -29,6 +30,7 @@ public class OrderResponseDTO {
     private List<OrderItemResponseDTO> items;
     private List<OrderStatusHistoryResponseDTO> statusHistory;
     private List<PaymentResponseDTO> payments;
+    private List<ShipmentResponseDTO> shipments;
     private Instant createdAt;
     private Instant updatedAt;
 }

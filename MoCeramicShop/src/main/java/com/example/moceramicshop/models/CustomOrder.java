@@ -8,6 +8,8 @@ import org.hibernate.annotations.ColumnDefault;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -15,6 +17,7 @@ import java.time.LocalDate;
 @Table(name = "custom_orders")
 public class CustomOrder {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
     private Long id;
 
@@ -59,5 +62,8 @@ public class CustomOrder {
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @OneToMany(mappedBy = "customOrder", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CustomOrderAttachment> attachments = new ArrayList<>();
 
 }

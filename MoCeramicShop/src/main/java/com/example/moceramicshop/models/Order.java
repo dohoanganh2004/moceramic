@@ -69,13 +69,16 @@ public class Order {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    @OneToMany(mappedBy = "order")
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
 
-    @OneToMany(mappedBy = "order")
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("createdAt ASC")
     private List<OrderStatusHistory> statusHistory = new ArrayList<>();
 
     @OneToMany(mappedBy = "order")
     private List<Payment> payments = new ArrayList<>();
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Shipment> shipments = new ArrayList<>();
 }

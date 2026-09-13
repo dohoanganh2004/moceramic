@@ -9,13 +9,17 @@ import com.example.moceramicshop.models.BlogPost;
 import com.example.moceramicshop.models.User;
 import com.example.moceramicshop.repositories.BlogPostRepository;
 import com.example.moceramicshop.repositories.UserRepository;
+import com.example.moceramicshop.specifications.BlogPostSpecification;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
 
+@Slf4j
 @Service
 public class BlogPostServiceImp implements BlogPostService {
 
@@ -30,6 +34,15 @@ public class BlogPostServiceImp implements BlogPostService {
         this.blogPostRepository = blogPostRepository;
         this.userRepository = userRepository;
         this.blogPostMapper = blogPostMapper;
+    }
+
+    @Override
+    public Page<BlogPostResponseDTO> search(String search, String status, Pageable pageable) {
+        Specification<BlogPost> spec = Specification
+                .where(BlogPostSpecification.hasTitleContaining(search))
+                .and(BlogPostSpecification.hasStatus(status));
+        log.info("Searching blog posts: search={} status={} page={}", search, status, pageable);
+        return blogPostRepository.findAll(spec, pageable).map(blogPostMapper::toResponseDTO);
     }
 
     @Override
@@ -65,6 +78,7 @@ public class BlogPostServiceImp implements BlogPostService {
         post.setUpdatedAt(Instant.now());
 
         BlogPost saved = blogPostRepository.saveAndFlush(post);
+        log.info("Created blog post id={} slug={}", saved.getId(), saved.getSlug());
         return blogPostMapper.toResponseDTO(blogPostRepository.findWithAuthorById(saved.getId()).orElseThrow());
     }
 
@@ -84,6 +98,7 @@ public class BlogPostServiceImp implements BlogPostService {
         post.setUpdatedAt(Instant.now());
 
         BlogPost saved = blogPostRepository.saveAndFlush(post);
+        log.info("Updated blog post id={}", id);
         return blogPostMapper.toResponseDTO(blogPostRepository.findWithAuthorById(saved.getId()).orElseThrow());
     }
 
@@ -94,6 +109,7 @@ public class BlogPostServiceImp implements BlogPostService {
         post.setStatus(STATUS_PUBLISHED);
         post.setPublishedAt(Instant.now());
         post.setUpdatedAt(Instant.now());
+        log.info("Published blog post id={}", id);
         return blogPostMapper.toResponseDTO(blogPostRepository.saveAndFlush(post));
     }
 
@@ -104,6 +120,7 @@ public class BlogPostServiceImp implements BlogPostService {
         post.setStatus(STATUS_DRAFT);
         post.setPublishedAt(null);
         post.setUpdatedAt(Instant.now());
+        log.info("Unpublished blog post id={}", id);
         return blogPostMapper.toResponseDTO(blogPostRepository.saveAndFlush(post));
     }
 
@@ -113,6 +130,7 @@ public class BlogPostServiceImp implements BlogPostService {
             throw new ResourceNotFoundException("Không tìm thấy bài viết với id " + id);
         }
         blogPostRepository.deleteById(id);
+        log.info("Deleted blog post id={}", id);
     }
 
     @Override

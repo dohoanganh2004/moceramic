@@ -17,9 +17,11 @@ import com.example.moceramicshop.repositories.RoleRepository;
 import com.example.moceramicshop.repositories.UserRepository;
 import com.example.moceramicshop.security.CustomUserDetails;
 import com.example.moceramicshop.security.JwtTokenProvider;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -28,10 +30,11 @@ import java.time.Instant;
 import static com.example.moceramicshop.security.JwtTokenProvider.TOKEN_TYPE_ACCESS;
 import static com.example.moceramicshop.security.JwtTokenProvider.TOKEN_TYPE_REFRESH;
 
+@Slf4j
 @Service
 public class AuthServiceImp implements AuthService {
 
-    private static final int DEFAULT_ROLE_ID_CUSTOMER = 2;
+    private static final int DEFAULT_ROLE_ID_CUSTOMER = 1;
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -57,10 +60,12 @@ public class AuthServiceImp implements AuthService {
     @Override
     public RegisterResponseDTO register(RegisterRequestDTO dto) {
         if (userRepository.getUserByEmail(dto.getEmail()) != null) {
+            log.warn("Register attempt with existing email: {}", dto.getEmail());
             throw new ConflictException("Email đã tồn tại, vui lòng sử dụng email khác");
         }
         String phone = dto.getPhoneNumber();
         if (phone != null && userRepository.getUserByPhone(phone) != null) {
+            log.warn("Register attempt with existing phone: {}", phone);
             throw new ConflictException("Số điện thoại đã tồn tại, vui lòng sử dụng số điện thoại khác");
         }
         if (!dto.getPassword().equals(dto.getConfirmPassword())) {
@@ -82,18 +87,32 @@ public class AuthServiceImp implements AuthService {
         user.setUpdatedAt(Instant.now());
 
         User savedUser = userRepository.saveAndFlush(user);
+        log.info("Registered new user id={} email={}", savedUser.getId(), savedUser.getEmail());
         return userMapper.toRegisterResponseDTO(savedUser);
     }
 
     @Override
     public LoginResponseDTO login(LoginRequestDTO dto) {
+        User existingUser = userRepository.getUserByPhone(dto.getPhoneNumber());
+        if (existingUser != null && !Boolean.TRUE.equals(existingUser.getIsActive())) {
+            log.warn("Login attempt from banned userId={} phoneNumber={}", existingUser.getId(), dto.getPhoneNumber());
+            throw new UnauthorizedException("Tài khoản của bạn đã bị khóa, vui lòng liên hệ quản trị viên để biết thêm chi tiết");
+        }
+
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(dto.getPhoneNumber(), dto.getPassword());
-        Authentication authentication = authenticationManager.authenticate(authenticationToken);
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(authenticationToken);
+        } catch (AuthenticationException e) {
+            log.warn("Failed login attempt for phoneNumber={}: {}", dto.getPhoneNumber(), e.getMessage());
+            throw e;
+        }
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
         String accessToken = jwtTokenProvider.generateAccessToken(userDetails);
         String refreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
+        log.info("User id={} logged in", userDetails.getUser().getId());
         return new LoginResponseDTO(accessToken, refreshToken);
     }
 
@@ -106,6 +125,7 @@ public class AuthServiceImp implements AuthService {
             throw new UnauthorizedException("Token này không phải refresh token");
         }
         if (blacklistedTokenRepository.existsByTokenJti(jwtTokenProvider.getJti(refreshToken))) {
+            log.warn("Attempt to use blacklisted refresh token jti={}", jwtTokenProvider.getJti(refreshToken));
             throw new UnauthorizedException("Refresh token đã bị thu hồi");
         }
 
@@ -114,6 +134,7 @@ public class AuthServiceImp implements AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user với id " + userId));
 
         String newAccessToken = jwtTokenProvider.generateAccessToken(new CustomUserDetails(user));
+        log.info("Issued new access token for userId={}", userId);
         return new LoginResponseDTO(newAccessToken, refreshToken);
     }
 
@@ -121,6 +142,7 @@ public class AuthServiceImp implements AuthService {
     public void logout(String accessToken, String refreshToken) {
         blacklistIfValid(accessToken, TOKEN_TYPE_ACCESS);
         blacklistIfValid(refreshToken, TOKEN_TYPE_REFRESH);
+        log.info("Logout processed, tokens blacklisted where valid");
     }
 
     @Override

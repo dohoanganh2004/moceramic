@@ -5,7 +5,7 @@ import com.example.moceramicshop.models.Order;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring", uses = {OrderItemMapper.class, OrderStatusHistoryMapper.class, PaymentMapper.class})
+@Mapper(componentModel = "spring", uses = {OrderItemMapper.class, OrderStatusHistoryMapper.class, PaymentMapper.class, ShipmentMapper.class})
 public interface OrderMapper {
     @Mapping(target = "userId", source = "user.id")
     @Mapping(target = "userName", source = "user.fullName")
