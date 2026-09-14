@@ -3,6 +3,7 @@ package com.example.moceramicshop.controllers;
 import com.example.moceramicshop.dtos.request.blog.BlogPostRequestDTO;
 import com.example.moceramicshop.dtos.response.blog.BlogPostResponseDTO;
 import com.example.moceramicshop.security.CustomUserDetails;
+import com.example.moceramicshop.security.PermissionGuard;
 import com.example.moceramicshop.services.BlogPostService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -31,19 +32,23 @@ import java.util.Set;
 public class BlogPostController {
 
     private final BlogPostService blogPostService;
+    private final PermissionGuard permissionGuard;
 
-    public BlogPostController(BlogPostService blogPostService) {
+    public BlogPostController(BlogPostService blogPostService, PermissionGuard permissionGuard) {
         this.blogPostService = blogPostService;
+        this.permissionGuard = permissionGuard;
     }
 
     @PostMapping
     public ResponseEntity<BlogPostResponseDTO> create(@Valid @RequestBody BlogPostRequestDTO dto,
                                                         @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "blog");
         return ResponseEntity.status(HttpStatus.CREATED).body(blogPostService.create(dto, currentUser.getUser().getId()));
     }
 
     @GetMapping
-    public ResponseEntity<List<BlogPostResponseDTO>> getAll() {
+    public ResponseEntity<List<BlogPostResponseDTO>> getAll(@AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "blog");
         return ResponseEntity.ok(blogPostService.getAllPosts());
     }
 
@@ -56,7 +61,9 @@ public class BlogPostController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "blog");
         String field = SORTABLE_FIELDS.contains(sortBy) ? sortBy : "createdAt";
         Sort sort = "asc".equalsIgnoreCase(sortDir) ? Sort.by(field).ascending() : Sort.by(field).descending();
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), sort);
@@ -64,27 +71,33 @@ public class BlogPostController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BlogPostResponseDTO> getById(@PathVariable Long id) {
+    public ResponseEntity<BlogPostResponseDTO> getById(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "blog");
         return ResponseEntity.ok(blogPostService.getPostById(id));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<BlogPostResponseDTO> update(@PathVariable Long id, @Valid @RequestBody BlogPostRequestDTO dto) {
+    public ResponseEntity<BlogPostResponseDTO> update(@PathVariable Long id, @Valid @RequestBody BlogPostRequestDTO dto,
+                                                        @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "blog");
         return ResponseEntity.ok(blogPostService.update(id, dto));
     }
 
     @PatchMapping("/{id}/publish")
-    public ResponseEntity<BlogPostResponseDTO> publish(@PathVariable Long id) {
+    public ResponseEntity<BlogPostResponseDTO> publish(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "blog");
         return ResponseEntity.ok(blogPostService.publish(id));
     }
 
     @PatchMapping("/{id}/unpublish")
-    public ResponseEntity<BlogPostResponseDTO> unpublish(@PathVariable Long id) {
+    public ResponseEntity<BlogPostResponseDTO> unpublish(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "blog");
         return ResponseEntity.ok(blogPostService.unpublish(id));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "blog");
         blogPostService.delete(id);
         return ResponseEntity.noContent().build();
     }

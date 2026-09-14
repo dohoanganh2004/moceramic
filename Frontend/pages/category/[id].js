@@ -16,11 +16,15 @@ import InstagramWidget from 'components/e-commerce/Instagram';
 import filter from "public/images/e-commerce/filter.svg";
 import relevant from "public/images/e-commerce/relevant.svg";
 import axios from "axios";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import Head from "next/head";
 import { useRouter } from "next/router";
+import useWishlist from "hooks/useWishlist";
+import { emitCartUpdated } from "utils/cartEvents";
+import resolveAssetUrl from "utils/resolveAssetUrl";
+import { formatVND } from "utils/formatCurrency";
 
-let categoriesList = [], brandsList = [];
+let categoriesList = [];
 
 const Index = ({ categoryId, categoryData }) => {
   const router = useRouter();
@@ -86,6 +90,7 @@ const Index = ({ categoryId, categoryData }) => {
   const [products, setProducts] = React.useState([]);
   const [showFilter, setShowFilter] = React.useState(false);
   const [allProducts, setAllProducts] = React.useState([]);
+  const [categories, setCategories] = React.useState([]);
   const [openState, dispatch] = React.useReducer(openReducer, {
     open0: false,
     open1: false,
@@ -98,6 +103,7 @@ const Index = ({ categoryId, categoryData }) => {
     open8: false,
   });
   const currentUser = useSelector((store) => store.auth.currentUser);
+  const { wishlistIds, toggleWishlist } = useWishlist(currentUser);
   React.useEffect(() => {
     window.addEventListener("resize", () => {
       setWidth(window.innerWidth);
@@ -107,6 +113,7 @@ const Index = ({ categoryId, categoryData }) => {
           setAllProducts(byCategory);
           setProducts(byCategory);
       })
+      axios.get("/categories").then((res) => setCategories(res.data || [])).catch(() => setCategories([]));
   }, [categoryId]);
 
 
@@ -124,7 +131,8 @@ const Index = ({ categoryId, categoryData }) => {
     }
     axios
       .post(`/cart/items`, { variantId, quantity })
-      .then(() => {
+      .then((res) => {
+        emitCartUpdated(res.data.totalItems);
         toast.info("Product successfully added to your cart");
       })
       .catch(() => {
@@ -132,52 +140,21 @@ const Index = ({ categoryId, categoryData }) => {
       });
   };
 
-  const addToWishlist = (productId) => {
-    if (!currentUser) {
-      toast.info("Please log in to add items to your wishlist");
-      if (typeof window !== "undefined") { window.location.href = "/login"; }
-      return;
-    }
-    axios
-      .post(`/wishlist`, { productId })
-      .then(() => {
-        toast.info("Product successfully added to your wishlist");
-      })
-      .catch(() => {
-        toast.error("Could not add this item to your wishlist");
-      });
-  };
 
-  const filterByCategory = (category, brands) => {
-    let count = 0, brandsCount = 0, brandsString = "", categoriesString = "";
-    if (brands) {
-      brandsList.push(category)
-      brandsList.forEach(item => {
-        if (item === category) brandsCount += 1;
-      })
-      brandsList = brandsList.filter(item => {
-        if (brandsList.length === 1) {
-          return true
-        }
-        if (brandsCount === 1 && item === category) return true;
-        return item !== category
-      })
-      brandsString = brandsList.join('|')
-    } else {
-      categoriesList.push(category)
-      categoriesList.forEach(item => {
-        if (item === category) count += 1;
-      })
-      categoriesList = categoriesList.filter(item => {
-        if (categoriesList.length === 1) {
-          return true
-        }
-        if (count === 1 && item === category) return true;
-        return item !== category
-      })
-      categoriesString = categoriesList.join('|')
-    }
-    if (categoriesList.length === 0 && brandsList.length === 0) {
+  const filterByCategory = (category) => {
+    let count = 0;
+    categoriesList.push(category)
+    categoriesList.forEach(item => {
+      if (item === category) count += 1;
+    })
+    categoriesList = categoriesList.filter(item => {
+      if (categoriesList.length === 1) {
+        return true
+      }
+      if (count === 1 && item === category) return true;
+      return item !== category
+    })
+    if (categoriesList.length === 0) {
       setProducts([...allProducts]);
       return;
     }
@@ -211,43 +188,24 @@ const Index = ({ categoryId, categoryData }) => {
       </Head>
       <Container className={"mb-5"} style={{ marginTop: 21 }}>
         <Row>
-          <ToastContainer />
           <Col sm={3} className={`${s.filterColumn} ${showFilter ? s.showFilter : ''}`}>
           <div className={s.filterTitle}><h5 className={"fw-bold mb-5 text-uppercase"}>Categories</h5><span onClick={() => setShowFilter(false)}>✕</span></div>
-            <div className={"d-flex align-items-center"}>
-              <input type={"checkbox"} onClick={() => filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc711")}/>
-              <p className={"d-inline-block ml-2 mb-0"}>Furniture</p>
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <input type={"checkbox"} onClick={() => filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc712")}/>
-              <p className={"d-inline-block ml-2 mb-0"}>Lighting</p>
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <input type={"checkbox"} onClick={() => filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc713")}/>
-              <p className={"d-inline-block ml-2 mb-0"}>Decoration</p>
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <input type={"checkbox"} onClick={() => filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc714")}/>
-              <p className={"d-inline-block ml-2 mb-0"}>Bedding</p>
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <input type={"checkbox"} onClick={() => filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc715")}/>
-              <p className={"d-inline-block ml-2 mb-0"}>Bath & Shower</p>
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <input type={"checkbox"} onClick={() => filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc716")}/>
-              <p className={"d-inline-block ml-2 mb-0"}>Curtains</p>
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <input type={"checkbox"} onClick={() => filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc717")}/>
-              <p className={"d-inline-block ml-2 mb-0"}>Toys</p>
-            </div>
+            {categories.length === 0 ? (
+              <p className={"text-muted"}>No categories yet.</p>
+            ) : (
+              categories.map((cat, i) => (
+                <div className={`d-flex align-items-center ${i > 0 ? "mt-2" : ""}`} key={cat.id}>
+                  <input type={"checkbox"} onClick={() => filterByCategory(String(cat.id))}/>
+                  <p className={"d-inline-block ml-2 mb-0"}>{cat.name}</p>
+                </div>
+              ))
+            )}
             <h5
                 className={"fw-bold mb-5 mt-5 text-uppercase"}
             >
               Price
             </h5>
-            <p>Price Range: $0 - $1000</p>
+            <p>Price Range: {formatVND(0)} - {formatVND(1000)}</p>
             <input
                 type="range"
                 min="0"
@@ -255,63 +213,6 @@ const Index = ({ categoryId, categoryData }) => {
                 defaultValue={"1000"}
                 className={"w-100"}
             />
-            <h5 className={"fw-bold mb-5 mt-5 text-uppercase"}>Brands</h5>
-            <div className={"d-flex align-items-center"}>
-              <input type={"checkbox"} onClick={() => filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc721", true)}/>
-              <p className={"d-inline-block ml-2 mb-0"}>Poliform</p>
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <input type={"checkbox"} onClick={() => filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc722", true)}/>
-              <p className={"d-inline-block ml-2 mb-0"}>Roche Bobois</p>
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <input type={"checkbox"} onClick={() => filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc723", true)}/>
-              <p className={"d-inline-block ml-2 mb-0"}>Edra</p>
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <input type={"checkbox"} onClick={() => filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc724", true)}/>
-              <p className={"d-inline-block ml-2 mb-0"}>Kartell</p>
-            </div>
-            <h5 className={"fw-bold mb-5 mt-5 text-uppercase"}>Rooms</h5>
-            <div className={"d-flex align-items-center"}>
-              <input type={"checkbox"} />
-              <p className={"d-inline-block ml-2 mb-0"}>Bedroom</p>
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <input type={"checkbox"} />
-              <p className={"d-inline-block ml-2 mb-0"}>Kitchen</p>
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <input type={"checkbox"} />
-              <p className={"d-inline-block ml-2 mb-0"}>Living Room</p>
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <input type={"checkbox"} />
-              <p className={"d-inline-block ml-2 mb-0"}>Bathroom</p>
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <input type={"checkbox"} />
-              <p className={"d-inline-block ml-2 mb-0"}>Wine Cellar</p>
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <input type={"checkbox"} />
-              <p className={"d-inline-block ml-2 mb-0"}>Balcony</p>
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <input type={"checkbox"} />
-              <p className={"d-inline-block ml-2 mb-0"}>Games Room</p>
-            </div>
-            <h5 className={"fw-bold mb-5 mt-5 text-uppercase"}>
-              Availability
-            </h5>
-            <div className={"d-flex align-items-center"}>
-              <input type={"checkbox"} />
-              <p className={"d-inline-block ml-2 mb-0"}>On Stock</p>
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <input type={"checkbox"} />
-              <p className={"d-inline-block ml-2 mb-0"}>Out of Stock</p>
-            </div>
           </Col>
           <Col sm={width <= 768 ? 12 : 9}>
             {!(width <= 768) ? (
@@ -324,16 +225,15 @@ const Index = ({ categoryId, categoryData }) => {
                   <span className={"fw-bold text-primary"}>
                     {products.length}
                   </span>{" "}
-                  of <span className={"fw-bold text-primary"}>15</span> Products
+                  of <span className={"fw-bold text-primary"}>{allProducts.length}</span> Products
                 </h6>
                 <div className={"d-flex align-items-center"}>
                   <h6 className={"text-nowrap mr-3 mb-0"}>Sort by:</h6>
                   <Input type={"select"} style={{ height: 50, width: 160 }}>
                     <option>Most Popular</option>
-                    <option>2</option>
-                    <option>3</option>
-                    <option>4</option>
-                    <option>5</option>
+                    <option>Newest</option>
+                    <option>Price: low to high</option>
+                    <option>Price: high to low</option>
                   </Input>
                 </div>
               </div>
@@ -365,13 +265,13 @@ const Index = ({ categoryId, categoryData }) => {
                       isOpen={openState[`open${index}`]}
                       toggle={() => dispatch({ type: `open${index}` })}
                     >
-                      <img src={c.images?.[0]?.imageUrl} />
+                      <img src={resolveAssetUrl(c.images?.[0]?.imageUrl)} />
                     </Modal>
                     <div style={{ position: "relative" }}>
                       <Link href={`/products/${c.id}`}>
                         <a>
                         <img
-                          src={c.images?.[0]?.imageUrl}
+                          src={resolveAssetUrl(c.images?.[0]?.imageUrl)}
                           className={"img-fluid"}
                         />
                         </a>
@@ -388,11 +288,13 @@ const Index = ({ categoryId, categoryData }) => {
                         <Button
                           className={"p-0 bg-transparent border-0"}
                           onClick={() => {
-                            addToWishlist(c.id);
+                            toggleWishlist(c.id);
                           }}
                         >
                           <div
-                            className={`mb-4 ${s.product__actions__heart}`}
+                            className={`mb-4 ${s.product__actions__heart} ${
+                              wishlistIds.has(c.id) ? s.product__actions__heart_active : ""
+                            }`}
                           />
                         </Button>
                         <Button
@@ -426,7 +328,7 @@ const Index = ({ categoryId, categoryData }) => {
                       </h6>
                       </a>
                     </Link>
-                    <h6 style={{ fontSize: 16 }}>${c.basePrice}</h6>
+                    <h6 style={{ fontSize: 16 }}>{formatVND(c.basePrice)}</h6>
                   </Col>
                 );
               })}

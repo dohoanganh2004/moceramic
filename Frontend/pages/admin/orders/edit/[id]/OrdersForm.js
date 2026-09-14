@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import { FormGroup, Label, Input, Table } from "reactstrap";
 import Loader from "components/admin/Loader";
 import Widget from "components/admin/Widget";
+import formatCurrency from "utils/formatCurrency";
 
 const STATUS_OPTIONS = ["pending", "confirmed", "processing", "shipping", "delivered", "cancelled"];
 
@@ -29,19 +30,20 @@ class OrdersForm extends Component {
 
     return (
       <Widget title={<h4>Order {record.orderCode || `#${record.id}`}</h4>} collapse close>
-        <Table borderless size="sm">
+        <Table borderless size="sm" style={{ tableLayout: "fixed", width: "100%" }}>
           <tbody>
-            <tr><td className="fw-bold">Customer</td><td>{record.userName}</td></tr>
+            <tr><td className="fw-bold" style={{ width: 140 }}>Customer</td><td>{record.userName}</td></tr>
             <tr><td className="fw-bold">Shipping Address</td><td>{record.shippingSnapshot}</td></tr>
-            <tr><td className="fw-bold">Subtotal</td><td>${record.subtotal}</td></tr>
-            <tr><td className="fw-bold">Discount</td><td>${record.discountAmount}</td></tr>
-            <tr><td className="fw-bold">Total</td><td>${record.totalAmount}</td></tr>
+            <tr><td className="fw-bold">Subtotal</td><td>{formatCurrency(record.subtotal)}</td></tr>
+            <tr><td className="fw-bold">Discount</td><td>{formatCurrency(record.discountAmount)}</td></tr>
+            <tr><td className="fw-bold">Total</td><td>{formatCurrency(record.totalAmount)}</td></tr>
             <tr><td className="fw-bold">Voucher</td><td>{record.voucherCode || "-"}</td></tr>
             <tr><td className="fw-bold">Note</td><td>{record.note || "-"}</td></tr>
           </tbody>
         </Table>
 
         <h6 className="fw-bold mt-4">Items</h6>
+        <div style={{ overflowX: "auto" }}>
         <Table bordered size="sm">
           <thead>
             <tr><th>Product</th><th>Variant</th><th>Unit Price</th><th>Qty</th><th>Subtotal</th></tr>
@@ -51,13 +53,14 @@ class OrdersForm extends Component {
               <tr key={item.id}>
                 <td>{item.productNameSnapshot}</td>
                 <td>{item.variantSnapshot}</td>
-                <td>${item.unitPrice}</td>
+                <td>{formatCurrency(item.unitPrice)}</td>
                 <td>{item.quantity}</td>
-                <td>${item.subtotal}</td>
+                <td>{formatCurrency(item.subtotal)}</td>
               </tr>
             ))}
           </tbody>
         </Table>
+        </div>
 
         <form onSubmit={this.handleSubmit} className="mt-4">
           <FormGroup>
@@ -83,6 +86,7 @@ class OrdersForm extends Component {
         </form>
 
         <h6 className="fw-bold mt-4">Status History</h6>
+        <div style={{ overflowX: "auto" }}>
         <Table bordered size="sm">
           <thead>
             <tr><th>Status</th><th>Note</th><th>Changed By</th><th>When</th></tr>
@@ -98,6 +102,7 @@ class OrdersForm extends Component {
             ))}
           </tbody>
         </Table>
+        </div>
       </Widget>
     );
   }

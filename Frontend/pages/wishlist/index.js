@@ -7,8 +7,10 @@ import { useSelector } from "react-redux";
 import axios from "axios";
 import s1 from "./Wishlist.module.scss";
 import Head from "next/head";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import InfoBlock from "components/e-commerce/InfoBlock";
+import resolveAssetUrl from "utils/resolveAssetUrl";
+import { formatVND } from "utils/formatCurrency";
 
 const Cart = () => {
   const [items, setItems] = React.useState([]);
@@ -76,7 +78,6 @@ const Cart = () => {
         <meta name="twitter:site" content="@flatlogic" />
       </Head>
       <Container>
-        <ToastContainer />
         <Row className={"mb-5"} style={{ marginTop: 32 }}>
           <Col xs={12} style={{ overflow: 'auto' }}>
             <h2 className={"fw-bold mt-4 mb-4"}>Wishlist</h2>
@@ -110,7 +111,7 @@ const Cart = () => {
                       <td className={"px-0 pt-4"}>
                         <div className={"d-flex align-items-center"}>
                           <img
-                            src={item.productImageUrl}
+                            src={resolveAssetUrl(item.productImageUrl)}
                             width={100}
                             className={"mr-4"}
                           />
@@ -118,7 +119,7 @@ const Cart = () => {
                         </div>
                       </td>
                       <td className={"px-0 pt-4"}>
-                        <h6 className={"fw-bold mb-0"}>${item.basePrice}</h6>
+                        <h6 className={"fw-bold mb-0"}>{formatVND(item.basePrice)}</h6>
                       </td>
                       <td className={"px-0 pt-4"}>
                         <Button

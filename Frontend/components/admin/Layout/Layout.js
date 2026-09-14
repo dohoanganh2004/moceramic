@@ -3,12 +3,9 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { withRouter } from 'next/router'
 import Loader from "components/admin/Loader";
-import { TransitionGroup, CSSTransition } from "react-transition-group";
+import PageTransition from "components/PageTransition";
 import Hammer from "rc-hammerjs";
 import Header from "../Header";
-import ErrorPage from "../../../pages/404";
-import HeaderComp from 'components/e-commerce/Header';
-import FooterComp from 'components/e-commerce/Footer';
 import Helper from "../Helper";
 import Sidebar from "../Sidebar";
 import {
@@ -18,6 +15,7 @@ import {
 } from "redux/actions/navigation";
 import s from "./Layout.module.scss";
 import BreadcrumbHistory from "../BreadcrumbHistory";
+import { canAccessAdminRoute } from "constants/adminRoutePermissions";
 
 import { SidebarTypes } from "redux/reducers/layout";
 
@@ -31,16 +29,47 @@ class Layout extends React.Component {
   constructor(props) {
     super(props);
 
+    this.state = { mounted: false };
     this.handleSwipe = this.handleSwipe.bind(this);
   }
 
   componentDidMount() {
+    // The Redux store is built once per server process and hydrated fresh in the
+    // browser, so on a hard navigation the server always renders as "logged out".
+    // Deferring the currentUser check until after mount avoids a hydration
+    // mismatch that (in React 16) never self-corrects, leaving a blank/no-sidebar
+    // page even though the client is actually authenticated.
+    this.setState({ mounted: true });
     this.handleResize();
     window.addEventListener("resize", this.handleResize.bind(this));
+    this.checkAccess();
+  }
+
+  componentDidUpdate(prevProps) {
+    if (
+      prevProps.router.pathname !== this.props.router.pathname ||
+      prevProps.currentUser !== this.props.currentUser ||
+      prevProps.loadingInit !== this.props.loadingInit
+    ) {
+      this.checkAccess();
+    }
   }
 
   componentWillUnmount() {
     window.removeEventListener("resize", this.handleResize.bind(this));
+  }
+
+  // Nobody without the right permission code can reach a /admin/* section -
+  // whether that's a guest, or a logged-in customer/staff member just typing
+  // the URL directly (the sidebar only hides links; it was never real access
+  // control). Everywhere else is public storefront content, so guests and
+  // under-permissioned users alike still get the normal sidebar + page there.
+  checkAccess() {
+    if (this.props.loadingInit) return;
+    const { pathname } = this.props.router;
+    if (pathname !== "/403" && !canAccessAdminRoute(pathname, this.props.currentUser)) {
+      this.props.router.replace("/403");
+    }
   }
 
   handleResize() {
@@ -64,15 +93,15 @@ class Layout extends React.Component {
   }
 
   render() {
-    if (!this.props.currentUser && !this.props.router.pathname.includes('documentation')) {
-      if (this.props.loadingInit) return <Loader />
-      return (
-        <>
-          <HeaderComp />
-            <ErrorPage />
-          <FooterComp />
-        </>
-      )
+    if (!this.state.mounted || this.props.loadingInit) return <Loader />;
+
+    // checkAccess() is already redirecting to /403 - don't flash the protected
+    // page's content while that navigation is in flight.
+    if (
+      this.props.router.pathname !== "/403" &&
+      !canAccessAdminRoute(this.props.router.pathname, this.props.currentUser)
+    ) {
+      return <Loader />;
     }
 
     return (
@@ -95,14 +124,9 @@ class Layout extends React.Component {
           <Hammer onSwipe={this.handleSwipe}>
             <main className={s.content}>
               <BreadcrumbHistory url={this.props.router.pathname} />
-              <TransitionGroup>
-                <CSSTransition
-                  classNames="fade"
-                  timeout={200}
-                >
-                  {this.props.children}
-                </CSSTransition>
-              </TransitionGroup>
+              <PageTransition routeKey={this.props.router.asPath}>
+                {this.props.children}
+              </PageTransition>
               <footer className={s.contentFooter}>
                 Flatlogic Ecommerce - Made by{" "}
                 <a

@@ -119,6 +119,9 @@
         background: url('../../public/images/e-commerce/shop/heart-hover.svg');
       }
     }
+    &__heart_active {
+      background: url('../../public/images/e-commerce/shop/heart-active.svg') !important;
+    }
     &__max {
       background: url('../../public/images/e-commerce/shop/maximize.svg');
       width: 24px;

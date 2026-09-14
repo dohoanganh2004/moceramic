@@ -1,14 +1,11 @@
 import React from "react";
-import { Container, Row, Col, Button, Table, Modal, ModalBody, ModalHeader, Input, Label, FormGroup } from "reactstrap";
+import { Row, Col, Button, Modal, ModalBody, ModalHeader, Input, Label, FormGroup } from "reactstrap";
 import Head from 'next/head';
 import { useSelector } from 'react-redux'
-import axios from "axios";
-import { toast, ToastContainer } from "react-toastify";
-import s from "./Account.module.scss";
-import product from "public/images/e-commerce/account/products.svg";
-import settings from "public/images/e-commerce/account/settings.svg";
-import avatar from "public/images/e-commerce/account/avatar.svg";
+import Widget from "components/admin/Widget";
 import edit from "public/images/e-commerce/account/edit.svg";
+import axios from "axios";
+import { toast } from "react-toastify";
 
 const emptyAddressForm = {
   recipientName: "",
@@ -22,15 +19,10 @@ const emptyAddressForm = {
 
 const Index = () => {
   const currentUser = useSelector((store) => store.auth.currentUser);
-  const [orders, setOrders] = React.useState([]);
   const [addresses, setAddresses] = React.useState([]);
   const [addressModalOpen, setAddressModalOpen] = React.useState(false);
   const [editingAddressId, setEditingAddressId] = React.useState(null);
   const [addressForm, setAddressForm] = React.useState(emptyAddressForm);
-
-  const fetchOrders = () => {
-    axios.get("/order/user/id").then((res) => setOrders(res.data || [])).catch(() => setOrders([]));
-  };
 
   const fetchAddresses = () => {
     axios.get("/address").then((res) => setAddresses(res.data || [])).catch(() => setAddresses([]));
@@ -38,7 +30,6 @@ const Index = () => {
 
   React.useEffect(() => {
     if (currentUser) {
-      fetchOrders();
       fetchAddresses();
     }
   }, [currentUser]);
@@ -98,91 +89,33 @@ const Index = () => {
   return (
     <>
       <Head>
-        <title>Account</title>
+        <title>Address</title>
         <meta name="viewport" content="initial-scale=1.0, width=device-width" />
-        <meta name="description" content="Beautifully designed web application template built with React and Bootstrap to create modern apps and speed up development" />
         <meta charSet="utf-8" />
       </Head>
-      <ToastContainer />
-      <Container className={"mb-5"} style={{ marginTop: 32 }}>
-        <Row>
-          <Col xl={8} lg={8} xs={12}>
-            <h3 className={"fw-bold mb-4"}>My Account</h3>
-            {!currentUser ? (
-              <p>Please log in to view your account.</p>
-            ) : (
-              <Row className={"mt-3"}>
-                <Col xl={12} lg={12} xs={12} style={{ overflow: "auto" }}>
-                  <h3 className={"fw-bold mb-4"}>My Orders</h3>
-                  {orders.length === 0 ? (
-                    <p className={"text-muted"}>You have no orders yet.</p>
-                  ) : (
-                    <Table className={s.accountTable} borderless>
-                      <thead>
-                        <tr style={{ borderBottom: "1px solid #D9D9D9" }}>
-                          <th className={"bg-transparent text-dark px-0"}>Date</th>
-                          <th className={"bg-transparent text-dark px-0"}>Order</th>
-                          <th className={"bg-transparent text-dark px-0"}>Status</th>
-                          <th className={"bg-transparent text-dark px-0"}>Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {orders.map((order) => (
-                          <tr className={"mt-2"} key={order.id}>
-                            <td className={"px-0 pt-4"}>
-                              <p className={"text-muted"}>
-                                {order.createdAt && order.createdAt.toString().slice(0, 10)}
-                              </p>
-                            </td>
-                            <td className={"px-0 pt-4"}>
-                              <div className={"d-flex align-items-center"}>
-                                <img src={product} width={60} className={"mr-4"} />
-                                <div>
-                                  <h5 className={"fw-bold mb-0"}>{order.orderCode || `#${order.id}`}</h5>
-                                </div>
-                              </div>
-                            </td>
-                            <td className={"px-0 pt-4"}>
-                              <h6 className={"text-muted mb-0 text-capitalize"}>{order.status}</h6>
-                            </td>
-                            <td className={"px-0 pt-4"}>
-                              <h6 className={"fw-bold mb-0"}>${order.totalAmount}</h6>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </Table>
-                  )}
-                </Col>
-              </Row>
-            )}
-          </Col>
-          <Col xl={4} lg={4} xs={12}>
-            <section className={s.profile}>
-              <Button className={"bg-transparent border-0 p-0"}>
-                <img src={settings} alt={"settings"} className={s.settingsIcon} />
-              </Button>
-              <img src={avatar} alt={"avatar"} />
-              <h5 className={"text-primary fw-bold mt-4"}>{currentUser ? currentUser.fullName : "Guest"}</h5>
-              <p className={"text-muted"}>{currentUser ? currentUser.email : ""}</p>
-              <hr />
-              <div className={"w-100 mt-3"}>
-                <div className={"d-flex justify-content-between align-items-center mb-3"}>
-                  <h6 className={"fw-bold mb-0"}>Addresses</h6>
-                  <Button
-                    className={"bg-transparent border-0 p-0 text-primary fw-bold"}
-                    onClick={openAddAddress}
-                    disabled={!currentUser}
-                  >
-                    + Add
+      <div>
+        <h1 className="page-title">Address</h1>
+        {!currentUser ? (
+          <p>Please log in to manage your addresses.</p>
+        ) : (
+          <Row>
+            <Col lg={8} xs={12}>
+              <Widget title={<h4>Saved Addresses</h4>}>
+                <div className={"d-flex justify-content-end mb-3"}>
+                  <Button color={"primary"} size={"sm"} className={"fw-bold"} onClick={openAddAddress}>
+                    + Add Address
                   </Button>
                 </div>
                 {addresses.length === 0 ? (
                   <p className={"text-muted"}>No saved addresses.</p>
                 ) : (
                   addresses.map((addr) => (
-                    <div key={addr.id} className={"d-flex justify-content-between align-items-start mb-3"}>
-                      <div style={{ width: 190 }}>
+                    <div
+                      key={addr.id}
+                      className={"d-flex justify-content-between align-items-start mb-3 pb-3"}
+                      style={{ borderBottom: "1px solid #eee" }}
+                    >
+                      <div>
                         <h6 className={"fw-bold mb-0"}>
                           {addr.recipientName}
                           {addr.isDefault ? (
@@ -218,11 +151,11 @@ const Index = () => {
                     </div>
                   ))
                 )}
-              </div>
-            </section>
-          </Col>
-        </Row>
-      </Container>
+              </Widget>
+            </Col>
+          </Row>
+        )}
+      </div>
       <Modal isOpen={addressModalOpen} toggle={() => setAddressModalOpen((v) => !v)}>
         <ModalHeader toggle={() => setAddressModalOpen((v) => !v)}>
           {editingAddressId ? "Edit Address" : "Add Address"}

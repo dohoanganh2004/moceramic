@@ -17,7 +17,7 @@ const actions = {
       });
 
       toast.success("Password has been updated");
-      if (typeof window !== 'undefined') { window.location.href = "/admin/dashboard" }
+      if (typeof window !== 'undefined') { window.location.href = "/my-profile" }
     } catch (error) {
       Errors.handle(error);
 

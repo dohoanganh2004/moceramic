@@ -8,7 +8,10 @@ import {
   Label,
   Input,
   Button,
+  Spinner,
 } from "reactstrap";
+import axios from "axios";
+import { toast } from "react-toastify";
 import img from "public/images/e-commerce/contact/img.png";
 
 import s from './Contact.module.scss';
@@ -20,14 +23,29 @@ const Index = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const updateForm = (e) => {
     e.preventDefault();
-    setName('');
-    setEmail('');
-    setPhone('');
-    setMessage('');
+    if (!name || !email || !message) {
+      toast.error("Please fill in name, email and message");
+      return;
+    }
+    setSubmitting(true);
+    axios
+      .post("/public/contact-messages", { name, email, phone, subject, message })
+      .then(() => {
+        toast.success("Your message has been sent. We will get back to you soon!");
+        setName('');
+        setEmail('');
+        setPhone('');
+        setSubject('');
+        setMessage('');
+      })
+      .catch(() => toast.error("Could not send your message. Please try again."))
+      .finally(() => setSubmitting(false));
   }
 
   return (
@@ -91,6 +109,18 @@ const Index = () => {
                 </div>
               </FormGroup>
               <FormGroup>
+                <Label for="subject" className="fw-bold text-muted">
+                  Subject
+                </Label>
+                <Input
+                  type="text"
+                  name="subject"
+                  id="subject"
+                  className="w-100"
+                  value={subject} onChange={(e) => setSubject(e.target.value)}
+                />
+              </FormGroup>
+              <FormGroup>
                 <Label for="exampleEmail" className="fw-bold text-muted">
                   Your Message
                 </Label>
@@ -108,9 +138,10 @@ const Index = () => {
               color="primary"
               className="text-uppercase fw-bold align-self-start"
               type={"submit"}
+              disabled={submitting}
               onClick={updateForm}
             >
-              send message
+              {submitting ? <Spinner size="sm" /> : "send message"}
             </Button>
             </FormGroup>
             </Form>

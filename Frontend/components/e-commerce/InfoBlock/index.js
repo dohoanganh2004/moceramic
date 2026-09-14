@@ -5,6 +5,7 @@ import car from "public/images/e-commerce/home/car.svg";
 import call from "public/images/e-commerce/home/headphones.svg";
 import moneyBack from "public/images/e-commerce/home/Sync.svg";
 import s from './InfoBlock.module.scss';
+import { formatVND } from "utils/formatCurrency";
 
 const InfoBlock = () => (
     <>
@@ -25,7 +26,7 @@ const InfoBlock = () => (
                     <img src={car} className={"mr-3"} />
                     <div>
                     <h5 className={"fw-bold text-uppercase"}>free shipping</h5>
-                    <p className={"text-muted mb-0"}>On all orders of $ 150</p>
+                    <p className={"text-muted mb-0"}>On all orders of {formatVND(150)}</p>
                     </div>
                 </section>
                 </Col>

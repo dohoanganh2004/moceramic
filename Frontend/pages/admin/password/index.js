@@ -44,7 +44,7 @@ class Index extends Component {
           saveLoading={this.props.saveLoading}
           findLoading={this.props.findLoading}
           onSubmit={this.doSubmit}
-          onCancel={() => this.props.router.push("/app/dashboard")}
+          onCancel={() => this.props.router.push("/my-profile")}
         />
       </React.Fragment>
     );

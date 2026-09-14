@@ -15,6 +15,7 @@ import {
 } from "reactstrap";
 import { registerUser, authError } from "redux/actions/auth";
 import { loginUser } from "redux/actions/auth";
+import { toast } from "react-toastify";
 import microsoft from "public/images/microsoft.png";
 import img from "public/images/e-commerce/register/bg.png";
 import logo from "public/images/e-commerce/logo.svg";
@@ -82,11 +83,9 @@ class Index extends React.Component {
 
   checkPassword() {
     if (!this.isPasswordValid()) {
-      if (!this.state.password) {
-        this.props.dispatch(authError("Password field is empty"));
-      } else {
-        this.props.dispatch(authError("Passwords are not equal"));
-      }
+      const message = !this.state.password ? "Password field is empty" : "Passwords are not equal";
+      this.props.dispatch(authError(message));
+      toast.error(message);
       setTimeout(() => {
         this.props.dispatch(authError());
       }, 3 * 1000);
@@ -104,9 +103,13 @@ class Index extends React.Component {
     if (!this.isPasswordValid()) {
       this.checkPassword();
     } else if (!this.state.accepted) {
-      this.props.dispatch(authError("Vui lòng đồng ý với điều khoản sử dụng"));
+      const message = "Vui lòng đồng ý với điều khoản sử dụng";
+      this.props.dispatch(authError(message));
+      toast.error(message);
     } else if (!this.state.phoneNumber) {
-      this.props.dispatch(authError("Vui lòng nhập số điện thoại"));
+      const message = "Vui lòng nhập số điện thoại";
+      this.props.dispatch(authError(message));
+      toast.error(message);
     } else {
       this.props.dispatch(
         registerUser({

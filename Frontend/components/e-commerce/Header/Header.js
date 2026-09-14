@@ -21,7 +21,9 @@ import {
   closeSidebar,
   openSidebar,
 } from "redux/actions/navigation";
+import { logoutUser } from "redux/actions/auth";
 import axios from "axios";
+import { CART_UPDATED_EVENT } from "utils/cartEvents";
 
 class Header extends React.Component {
   constructor(props) {
@@ -35,8 +37,22 @@ class Header extends React.Component {
       heightFour: 0,
       innerWidth: typeof window !== "undefined" && window.innerWidth,
       count: 0,
+      accountMenuOpen: false,
     };
   }
+
+  toggleAccountMenu = () => {
+    this.setState((prevState) => ({ accountMenuOpen: !prevState.accountMenuOpen }));
+  };
+
+  closeAccountMenu = () => {
+    this.setState({ accountMenuOpen: false });
+  };
+
+  handleLogout = () => {
+    this.closeAccountMenu();
+    this.props.dispatch(logoutUser());
+  };
 
   switchSidebar() {
     if (this.props.sidebarOpened) {
@@ -55,12 +71,19 @@ class Header extends React.Component {
       window.addEventListener("resize", () => {
         this.setState({ innerWidth: window.innerWidth });
       });
+
+    this.handleCartUpdated = (e) => {
+      this.setState({ count: (e.detail && e.detail.totalItems) || 0 });
+    };
+    typeof window !== "undefined" &&
+      window.addEventListener(CART_UPDATED_EVENT, this.handleCartUpdated);
+
     if (this.props.currentUser) {
       axios
-        .get(`/orders?user=${this.props.currentUser.id}&status=in+cart`)
+        .get(`/cart`)
         .then((res) => {
           this.setState({
-            count: res.data.count,
+            count: res.data.totalItems || 0,
           });
         })
         .catch(e => console.log(e));
@@ -70,6 +93,12 @@ class Header extends React.Component {
         count: JSON.parse(localStorage.getItem("products")).length,
       });
     }
+  }
+
+  componentWillUnmount() {
+    typeof window !== "undefined" &&
+      this.handleCartUpdated &&
+      window.removeEventListener(CART_UPDATED_EVENT, this.handleCartUpdated);
   }
 
   toggle = (e) => {
@@ -278,17 +307,72 @@ class Header extends React.Component {
                       </Button>
                     </a>
                   </Link>
-                  <Link href={"/login"}>
-                    <a>
-                      <Button className={`bg-transparent border-0 p-3`}>
-                        {this.props.router.pathname.includes("account") ? (
-                            <div className={s.headerLoginIconActive} />
-                        ) : (
-                            <div className={s.headerLoginIcon} />
-                        )}
-                      </Button>
-                    </a>
-                  </Link>
+                  {this.props.currentUser ? (
+                    <div style={{ position: "relative" }}>
+                      <a
+                        className={"text-dark fw-bold text-decoration-none px-2"}
+                        style={{ cursor: "pointer" }}
+                        onClick={this.toggleAccountMenu}
+                      >
+                        {this.props.currentUser.fullName}
+                      </a>
+                      {this.state.accountMenuOpen && (
+                        <>
+                          <div
+                            style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: 0, zIndex: 10 }}
+                            onClick={this.closeAccountMenu}
+                          />
+                          <div
+                            className={"bg-white shadow"}
+                            style={{
+                              position: "absolute",
+                              top: "100%",
+                              right: 0,
+                              minWidth: 180,
+                              zIndex: 11,
+                              borderRadius: 4,
+                              padding: "8px 0",
+                            }}
+                          >
+                            <Link href={"/account"}>
+                              <a
+                                className={"d-block px-3 py-2 text-dark text-decoration-none"}
+                                onClick={this.closeAccountMenu}
+                              >
+                                My Profile
+                              </a>
+                            </Link>
+                            <Link href={"/change-password"}>
+                              <a
+                                className={"d-block px-3 py-2 text-dark text-decoration-none"}
+                                onClick={this.closeAccountMenu}
+                              >
+                                Change Password
+                              </a>
+                            </Link>
+                            <button
+                              className={"d-block w-100 text-left bg-transparent border-0 px-3 py-2 text-dark"}
+                              onClick={this.handleLogout}
+                            >
+                              Logout
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <Link href={"/login"}>
+                      <a>
+                        <Button className={`bg-transparent border-0 p-3`}>
+                          {this.props.router.pathname.includes("account") ? (
+                              <div className={s.headerLoginIconActive} />
+                          ) : (
+                              <div className={s.headerLoginIcon} />
+                          )}
+                        </Button>
+                      </a>
+                    </Link>
+                  )}
                 </>
               )}
               <Link href={"/cart"}>

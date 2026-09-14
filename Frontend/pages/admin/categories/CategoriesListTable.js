@@ -1,8 +1,8 @@
-import actions from "redux/actions/categories/categoriesListActions";
 import React, { Component } from "react";
 import Link from 'next/link'
-import { connect } from "react-redux";
 import { withRouter } from 'next/router';
+import axios from "axios";
+import { toast } from "react-toastify";
 
 import {
   Dropdown,
@@ -22,25 +22,74 @@ import Widget from "components/admin/Widget";
 
 class CategoriesListTable extends Component {
   state = {
+    rows: [],
+    totalSize: 0,
+    page: 1,
+    sizePerPage: 10,
+    sortName: "sortOrder",
+    sortOrder: "asc",
+    searchText: "",
     modalOpen: false,
     idToDelete: null,
   };
 
-  handleDelete() {
-    const id = this.props.idToDelete;
-    this.props.dispatch(actions.doDelete(id));
+  componentDidMount() {
+    this.fetchRows();
   }
 
-  openModal(cell) {
-    const id = cell;
-    this.props.dispatch(actions.doOpenConfirm(id));
+  fetchRows = () => {
+    const { page, sizePerPage, sortName, sortOrder, searchText } = this.state;
+    axios
+      .get("/categories/search", {
+        params: {
+          search: searchText || undefined,
+          sortBy: sortName,
+          sortDir: sortOrder,
+          page: page - 1,
+          size: sizePerPage,
+        },
+      })
+      .then((res) => {
+        this.setState({ rows: res.data.content, totalSize: res.data.totalElements });
+      })
+      .catch(() => toast.error("Could not load categories"));
+  };
+
+  handlePageChange = (page, sizePerPage) => {
+    this.setState({ page, sizePerPage }, this.fetchRows);
+  };
+
+  handleSortChange = (sortName, sortOrder) => {
+    this.setState({ sortName, sortOrder, page: 1 }, this.fetchRows);
+  };
+
+  handleSearchChange = (searchText) => {
+    this.setState({ searchText, page: 1 }, this.fetchRows);
+  };
+
+  handleDelete() {
+    const id = this.state.idToDelete;
+    axios
+      .delete(`/categories/${id}`)
+      .then(() => {
+        this.closeModal();
+        this.fetchRows();
+      })
+      .catch(() => {
+        toast.error("Could not delete this category");
+        this.closeModal();
+      });
+  }
+
+  openModal(id) {
+    this.setState({ modalOpen: true, idToDelete: id });
   }
 
   closeModal() {
-    this.props.dispatch(actions.doCloseConfirm());
+    this.setState({ modalOpen: false, idToDelete: null });
   }
 
-  actionFormatter(cell) {
+  actionFormatter = (cell) => {
     return (
       <div>
         <Button
@@ -68,12 +117,7 @@ class CategoriesListTable extends Component {
         </Button>
       </div>
     );
-  }
-
-  componentDidMount() {
-    const { dispatch } = this.props;
-    dispatch(actions.doFetch({}));
-  }
+  };
 
   renderSizePerPageDropDown = (props) => {
     const limits = [];
@@ -89,7 +133,7 @@ class CategoriesListTable extends Component {
     });
 
     return (
-      <Dropdown isOpen={props.open} toggle={props.toggleDropDown}>
+      <Dropdown isOpen={props.open} toggle={props.toggleDropDown} modifiers={{ flip: { enabled: false } }}>
         <DropdownToggle color="default" caret>
           {props.currSizePerPage}
         </DropdownToggle>
@@ -99,11 +143,16 @@ class CategoriesListTable extends Component {
   };
 
   render() {
-    const { rows } = this.props;
+    const { rows, totalSize, page, sizePerPage } = this.state;
     const options = {
-      sizePerPage: 10,
+      page,
+      sizePerPage,
       paginationSize: 5,
+      sizePerPageList: [10, 25, 50],
       sizePerPageDropDown: this.renderSizePerPageDropDown,
+      onPageChange: this.handlePageChange,
+      onSortChange: this.handleSortChange,
+      onSearchChange: this.handleSearchChange,
     };
 
     return (
@@ -118,6 +167,8 @@ class CategoriesListTable extends Component {
             bordered={false}
             data={rows}
             version="4"
+            remote
+            fetchInfo={{ dataTotalSize: totalSize }}
             pagination
             options={options}
             search
@@ -134,7 +185,7 @@ class CategoriesListTable extends Component {
             <TableHeaderColumn
               isKey
               dataField="id"
-              dataFormat={this.actionFormatter.bind(this)}
+              dataFormat={this.actionFormatter}
             >
               <span className="fs-sm">Actions</span>
             </TableHeaderColumn>
@@ -143,7 +194,7 @@ class CategoriesListTable extends Component {
 
         <Modal
           size="sm"
-          isOpen={this.props.modalOpen}
+          isOpen={this.state.modalOpen}
           toggle={() => this.closeModal()}
         >
           <ModalHeader toggle={() => this.closeModal()}>
@@ -166,22 +217,4 @@ class CategoriesListTable extends Component {
   }
 }
 
-function mapStateToProps(store) {
-  return {
-    loading: store.categories.list.loading,
-    rows: store.categories.list.rows,
-    modalOpen: store.categories.list.modalOpen,
-    idToDelete: store.categories.list.idToDelete,
-  };
-}
-
-export async function getServerSideProps(context) {
-  // const res = await axios.get("/products");
-  // const products = res.data.rows;
-
-  return {
-    props: {  }, // will be passed to the page component as props
-  };
-}
-
-export default connect(mapStateToProps)(withRouter(CategoriesListTable));
+export default withRouter(CategoriesListTable);

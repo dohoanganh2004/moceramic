@@ -6,6 +6,7 @@ import InputFormItem from "components/admin/FormItems/items/InputFormItem";
 import TextAreaFormItem from "components/admin/FormItems/items/TextAreaFormItem";
 
 import productsFields from "components/admin/CRUD/Products/productsFields";
+import slugify from "utils/slugify";
 import IniValues from "components/admin/FormItems/iniValues";
 import PreparedValues from "components/admin/FormItems/preparedValues";
 import FormValidations from "components/admin/FormItems/formValidations";
@@ -55,9 +56,17 @@ class ProductsForm extends Component {
                   showCreate={false}
                 />
 
-                <InputFormItem name={"name"} schema={productsFields} />
+                <InputFormItem
+                  name={"name"}
+                  schema={productsFields}
+                  onValueChange={(value, formInstance) => {
+                    if (!formInstance.touched.slug) {
+                      formInstance.setFieldValue("slug", slugify(value));
+                    }
+                  }}
+                />
 
-                <InputFormItem name={"slug"} schema={productsFields} />
+                <InputFormItem name={"slug"} schema={productsFields} hint="Tự tạo từ tên sản phẩm, có thể sửa lại nếu cần." />
 
                 <TextAreaFormItem name={"description"} schema={productsFields} />
 

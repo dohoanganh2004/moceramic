@@ -3,17 +3,15 @@ import { createStore, applyMiddleware, compose } from "redux";
 import { Provider } from "react-redux";
 import ReduxThunk from "redux-thunk";
 import axios from "axios";
+import { ToastContainer } from "react-toastify";
 import createRootReducer from "redux/reducers";
 import config from "constants/config";
 import { doInit } from "redux/actions/auth";
-import Header from "components/e-commerce/Header";
-import Sidebar from "components/e-commerce/Sidebar";
 import Footer from "components/e-commerce/Footer";
 import AdminLayout from 'components/admin/Layout'
 import "styles/theme.scss";
 import { useRouter } from "next/router";
-import { Container } from "reactstrap";
-import BreadcrumbHistory from "components/admin/BreadcrumbHistory";
+import PageTransition from "components/PageTransition";
 
 axios.defaults.baseURL = config.baseURLApi;
 axios.defaults.headers.common["Content-Type"] = "application/json";
@@ -100,39 +98,36 @@ export const store = createStore(
 
 store.dispatch(doInit());
 
-function MyApp({ Component, pageProps, sidebarStatic }) {
+function AppContent({ Component, pageProps }) {
   const router = useRouter();
+  const isAuthPage = router.pathname.includes("login") || router.pathname.includes("register");
+
+  return (
+    <>
+      <ToastContainer position="top-right" autoClose={4000} newestOnTop closeOnClick pauseOnHover />
+      {isAuthPage ? (
+        <PageTransition routeKey={router.asPath}>
+          <Component {...pageProps} />
+        </PageTransition>
+      ) : (
+        <>
+          <AdminLayout>
+            <Component {...pageProps} />
+          </AdminLayout>
+          {!router.pathname.includes("admin") && <Footer />}
+        </>
+      )}
+    </>
+  );
+}
+
+function MyApp({ Component, pageProps, sidebarStatic }) {
   React.useEffect(() => {
     document.querySelector("body").scrollTo(0, 0);
   });
   return (
     <Provider store={store}>
-      {router.pathname.includes("admin") ? (
-          <AdminLayout>
-              <Component {...pageProps} />
-          </AdminLayout>
-      ) : router.pathname.includes("login") || router.pathname.includes("register")? (
-        <Component {...pageProps} />
-      ) : router.pathname.includes("search") ? (
-          <>
-            <Header/>
-            <Component {...pageProps} />
-          </>
-      ) : (
-        <>
-          <Sidebar />
-          <Header />
-          {router.pathname === "/" ? null : (
-            <>
-              <Container>
-                <BreadcrumbHistory url={router.pathname}/>
-              </Container>
-            </>
-          )}
-          <Component {...pageProps} />
-          <Footer />
-        </>
-      )}
+      <AppContent Component={Component} pageProps={pageProps} />
     </Provider>
   );
 }

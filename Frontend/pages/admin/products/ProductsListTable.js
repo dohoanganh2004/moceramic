@@ -1,8 +1,8 @@
 import { withRouter } from "next/router"
-import actions from "redux/actions/products/productsListActions";
 import React, { Component } from "react";
 import Link from 'next/link'
-import { connect } from "react-redux";
+import axios from "axios";
+import { toast } from "react-toastify";
 
 import {
   Dropdown,
@@ -14,33 +14,98 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  Input,
 } from "reactstrap";
 
 import { BootstrapTable, TableHeaderColumn } from "react-bootstrap-table";
 
 import Widget from "components/admin/Widget";
+import formatCurrency from "utils/formatCurrency";
 
 class ProductsListTable extends Component {
   state = {
+    rows: [],
+    totalSize: 0,
+    page: 1,
+    sizePerPage: 10,
+    sortName: "createdAt",
+    sortOrder: "desc",
+    searchText: "",
+    categoryId: "",
+    status: "",
+    categories: [],
     modalOpen: false,
     idToDelete: null,
   };
 
-  handleDelete() {
-    const id = this.props.idToDelete;
-    this.props.dispatch(actions.doDelete(id));
+  componentDidMount() {
+    axios.get("/categories").then((res) => this.setState({ categories: res.data || [] })).catch(() => {});
+    this.fetchRows();
   }
 
-  openModal(cell) {
-    const id = cell;
-    this.props.dispatch(actions.doOpenConfirm(id));
+  fetchRows = () => {
+    const { page, sizePerPage, sortName, sortOrder, searchText, categoryId, status } = this.state;
+    axios
+      .get("/products/search", {
+        params: {
+          search: searchText || undefined,
+          categoryId: categoryId || undefined,
+          status: status || undefined,
+          sortBy: sortName,
+          sortDir: sortOrder,
+          page: page - 1,
+          size: sizePerPage,
+        },
+      })
+      .then((res) => {
+        this.setState({ rows: res.data.content, totalSize: res.data.totalElements });
+      })
+      .catch(() => toast.error("Could not load products"));
+  };
+
+  handlePageChange = (page, sizePerPage) => {
+    this.setState({ page, sizePerPage }, this.fetchRows);
+  };
+
+  handleSortChange = (sortName, sortOrder) => {
+    this.setState({ sortName, sortOrder, page: 1 }, this.fetchRows);
+  };
+
+  handleSearchChange = (searchText) => {
+    this.setState({ searchText, page: 1 }, this.fetchRows);
+  };
+
+  handleCategoryFilterChange = (e) => {
+    this.setState({ categoryId: e.target.value, page: 1 }, this.fetchRows);
+  };
+
+  handleStatusFilterChange = (e) => {
+    this.setState({ status: e.target.value, page: 1 }, this.fetchRows);
+  };
+
+  handleDelete() {
+    const id = this.state.idToDelete;
+    axios
+      .delete(`/products/${id}`)
+      .then(() => {
+        this.closeModal();
+        this.fetchRows();
+      })
+      .catch(() => {
+        toast.error("Could not delete this product");
+        this.closeModal();
+      });
+  }
+
+  openModal(id) {
+    this.setState({ modalOpen: true, idToDelete: id });
   }
 
   closeModal() {
-    this.props.dispatch(actions.doCloseConfirm());
+    this.setState({ modalOpen: false, idToDelete: null });
   }
 
-  actionFormatter(cell) {
+  actionFormatter = (cell) => {
     return (
       <div>
         <Button
@@ -66,12 +131,7 @@ class ProductsListTable extends Component {
         </Button>
       </div>
     );
-  }
-
-  componentDidMount() {
-    const { dispatch } = this.props;
-    dispatch(actions.doFetch({}));
-  }
+  };
 
   renderSizePerPageDropDown = (props) => {
     const limits = [];
@@ -87,7 +147,7 @@ class ProductsListTable extends Component {
     });
 
     return (
-      <Dropdown isOpen={props.open} toggle={props.toggleDropDown}>
+      <Dropdown isOpen={props.open} toggle={props.toggleDropDown} modifiers={{ flip: { enabled: false } }}>
         <DropdownToggle color="default" caret>
           {props.currSizePerPage}
         </DropdownToggle>
@@ -97,25 +157,47 @@ class ProductsListTable extends Component {
   };
 
   render() {
-    const { rows } = this.props;
+    const { rows, totalSize, page, sizePerPage, categories, categoryId, status } = this.state;
     const options = {
-      sizePerPage: 10,
+      page,
+      sizePerPage,
       paginationSize: 5,
+      sizePerPageList: [10, 25, 50],
       sizePerPageDropDown: this.renderSizePerPageDropDown,
+      onPageChange: this.handlePageChange,
+      onSortChange: this.handleSortChange,
+      onSearchChange: this.handleSearchChange,
     };
 
     return (
       <div>
         <Widget title={<h4>Products</h4>} collapse close>
-          <Link href="/admin/products/new">
-            <button className="btn btn-primary" type="button">
-              New
-            </button>
-          </Link>
+          <div className="d-flex justify-content-between align-items-center mb-3" style={{ flexWrap: "wrap", gap: 8 }}>
+            <Link href="/admin/products/new">
+              <button className="btn btn-primary" type="button">
+                New
+              </button>
+            </Link>
+            <div className="d-flex" style={{ gap: 8 }}>
+              <Input type="select" value={categoryId} onChange={this.handleCategoryFilterChange} style={{ width: 200 }}>
+                <option value="">All categories</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </Input>
+              <Input type="select" value={status} onChange={this.handleStatusFilterChange} style={{ width: 160 }}>
+                <option value="">All statuses</option>
+                <option value="active">active</option>
+                <option value="inactive">inactive</option>
+              </Input>
+            </div>
+          </div>
           <BootstrapTable
             bordered={false}
             data={rows}
             version="4"
+            remote
+            fetchInfo={{ dataTotalSize: totalSize }}
             pagination
             options={options}
             search
@@ -132,11 +214,11 @@ class ProductsListTable extends Component {
               <span className="fs-sm">Name</span>
             </TableHeaderColumn>
 
-            <TableHeaderColumn dataField="basePrice" dataSort>
+            <TableHeaderColumn dataField="basePrice" dataSort dataFormat={(cell) => formatCurrency(cell)}>
               <span className="fs-sm">Price</span>
             </TableHeaderColumn>
 
-            <TableHeaderColumn dataField="categoryName" dataSort>
+            <TableHeaderColumn dataField="categoryName">
               <span className="fs-sm">Category</span>
             </TableHeaderColumn>
 
@@ -147,7 +229,7 @@ class ProductsListTable extends Component {
             <TableHeaderColumn
               isKey
               dataField="id"
-              dataFormat={this.actionFormatter.bind(this)}
+              dataFormat={this.actionFormatter}
             >
               <span className="fs-sm">Actions</span>
             </TableHeaderColumn>
@@ -156,7 +238,7 @@ class ProductsListTable extends Component {
 
         <Modal
           size="sm"
-          isOpen={this.props.modalOpen}
+          isOpen={this.state.modalOpen}
           toggle={() => this.closeModal()}
         >
           <ModalHeader toggle={() => this.closeModal()}>
@@ -179,22 +261,4 @@ class ProductsListTable extends Component {
   }
 }
 
-function mapStateToProps(store) {
-  return {
-    loading: store.products.list.loading,
-    rows: store.products.list.rows,
-    modalOpen: store.products.list.modalOpen,
-    idToDelete: store.products.list.idToDelete,
-  };
-}
-
-export async function getServerSideProps(context) {
-  // const res = await axios.get("/products");
-  // const products = res.data.rows;
-
-  return {
-    props: {  }, // will be passed to the page component as props
-  };
-}
-
-export default connect(mapStateToProps)(withRouter(ProductsListTable));
+export default withRouter(ProductsListTable);

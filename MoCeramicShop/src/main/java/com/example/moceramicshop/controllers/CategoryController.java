@@ -2,6 +2,8 @@ package com.example.moceramicshop.controllers;
 
 import com.example.moceramicshop.dtos.request.category.CategoryRequestDTO;
 import com.example.moceramicshop.dtos.response.category.CategoryResponseDTO;
+import com.example.moceramicshop.security.CustomUserDetails;
+import com.example.moceramicshop.security.PermissionGuard;
 import com.example.moceramicshop.services.CategoryService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -10,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,13 +31,17 @@ import java.util.Set;
 public class CategoryController {
 
     private final CategoryService categoryService;
+    private final PermissionGuard permissionGuard;
 
-    public CategoryController(CategoryService categoryService) {
+    public CategoryController(CategoryService categoryService, PermissionGuard permissionGuard) {
         this.categoryService = categoryService;
+        this.permissionGuard = permissionGuard;
     }
 
     @PostMapping
-    public ResponseEntity<CategoryResponseDTO> create(@Valid @RequestBody CategoryRequestDTO dto) {
+    public ResponseEntity<CategoryResponseDTO> create(@Valid @RequestBody CategoryRequestDTO dto,
+                                                        @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "categories");
         return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.create(dto));
     }
 
@@ -49,12 +56,15 @@ public class CategoryController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<CategoryResponseDTO> update(@PathVariable Long id, @Valid @RequestBody CategoryRequestDTO dto) {
+    public ResponseEntity<CategoryResponseDTO> update(@PathVariable Long id, @Valid @RequestBody CategoryRequestDTO dto,
+                                                        @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "categories");
         return ResponseEntity.ok(categoryService.update(id, dto));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "categories");
         categoryService.delete(id);
         return ResponseEntity.noContent().build();
     }
@@ -68,7 +78,9 @@ public class CategoryController {
             @RequestParam(defaultValue = "sortOrder") String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "categories");
         String field = SORTABLE_FIELDS.contains(sortBy) ? sortBy : "sortOrder";
         Sort sort = "desc".equalsIgnoreCase(sortDir) ? Sort.by(field).descending() : Sort.by(field).ascending();
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), sort);

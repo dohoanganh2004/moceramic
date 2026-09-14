@@ -1,8 +1,8 @@
-import actions from "redux/actions/users/usersListActions";
 import React, { Component } from "react";
 import Link from 'next/link'
 import { withRouter } from "next/router"
-import { connect } from "react-redux";
+import axios from "axios";
+import { toast } from "react-toastify";
 
 import {
   Dropdown,
@@ -14,33 +14,105 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  Input,
 } from "reactstrap";
 
 import { BootstrapTable, TableHeaderColumn } from "react-bootstrap-table";
 
 import Widget from "components/admin/Widget";
 
+const ROLE_OPTIONS = [
+  { value: 1, label: "customer" },
+  { value: 2, label: "admin" },
+  { value: 3, label: "sales_staff" },
+  { value: 4, label: "warehouse_staff" },
+  { value: 5, label: "accountant" },
+  { value: 6, label: "marketing" },
+];
+
 class UsersListTable extends Component {
   state = {
+    rows: [],
+    totalSize: 0,
+    page: 1,
+    sizePerPage: 10,
+    sortName: "createdAt",
+    sortOrder: "desc",
+    searchText: "",
+    roleId: "",
+    isActive: "",
     modalOpen: false,
     idToDelete: null,
   };
 
-  handleDelete() {
-    const id = this.props.idToDelete;
-    this.props.dispatch(actions.doDelete(id));
+  componentDidMount() {
+    this.fetchRows();
   }
 
-  openModal(cell) {
-    const id = cell;
-    this.props.dispatch(actions.doOpenConfirm(id));
+  fetchRows = () => {
+    const { page, sizePerPage, sortName, sortOrder, searchText, roleId, isActive } = this.state;
+    axios
+      .get("/users/search", {
+        params: {
+          search: searchText || undefined,
+          roleId: roleId || undefined,
+          isActive: isActive === "" ? undefined : isActive === "true",
+          sortBy: sortName,
+          sortDir: sortOrder,
+          page: page - 1,
+          size: sizePerPage,
+        },
+      })
+      .then((res) => {
+        this.setState({ rows: res.data.content, totalSize: res.data.totalElements });
+      })
+      .catch(() => toast.error("Could not load users"));
+  };
+
+  handlePageChange = (page, sizePerPage) => {
+    this.setState({ page, sizePerPage }, this.fetchRows);
+  };
+
+  handleSortChange = (sortName, sortOrder) => {
+    this.setState({ sortName, sortOrder, page: 1 }, this.fetchRows);
+  };
+
+  handleSearchChange = (searchText) => {
+    this.setState({ searchText, page: 1 }, this.fetchRows);
+  };
+
+  handleRoleFilterChange = (e) => {
+    this.setState({ roleId: e.target.value, page: 1 }, this.fetchRows);
+  };
+
+  handleActiveFilterChange = (e) => {
+    this.setState({ isActive: e.target.value, page: 1 }, this.fetchRows);
+  };
+
+  handleDelete() {
+    const id = this.state.idToDelete;
+    axios
+      .delete(`/users/${id}`)
+      .then(() => {
+        this.closeModal();
+        this.fetchRows();
+      })
+      .catch(() => {
+        toast.error("Could not delete this user");
+        this.closeModal();
+      });
+  }
+
+  openModal(id) {
+    this.setState({ modalOpen: true, idToDelete: id });
   }
 
   closeModal() {
-    this.props.dispatch(actions.doCloseConfirm());
+    this.setState({ modalOpen: false, idToDelete: null });
   }
 
-  actionFormatter(cell) {
+  actionFormatter = (cell, row) => {
+    const isAdmin = row.roleName === "admin";
     return (
       <div>
         <Button
@@ -58,18 +130,17 @@ class UsersListTable extends Component {
         >
           Edit
         </Button>
-        &nbsp;&nbsp;
-        <Button color="danger" size="xs" onClick={() => this.openModal(cell)}>
-          Delete
-        </Button>
+        {!isAdmin && (
+          <>
+            &nbsp;&nbsp;
+            <Button color="danger" size="xs" onClick={() => this.openModal(cell)}>
+              Delete
+            </Button>
+          </>
+        )}
       </div>
     );
-  }
-
-  componentDidMount() {
-    const { dispatch } = this.props;
-    dispatch(actions.doFetch({}));
-  }
+  };
 
   renderSizePerPageDropDown = (props) => {
     const limits = [];
@@ -85,7 +156,7 @@ class UsersListTable extends Component {
     });
 
     return (
-      <Dropdown isOpen={props.open} toggle={props.toggleDropDown}>
+      <Dropdown isOpen={props.open} toggle={props.toggleDropDown} modifiers={{ flip: { enabled: false } }}>
         <DropdownToggle color="default" caret>
           {props.currSizePerPage}
         </DropdownToggle>
@@ -95,26 +166,48 @@ class UsersListTable extends Component {
   };
 
   render() {
-    const { rows } = this.props;
+    const { rows, totalSize, page, sizePerPage, roleId, isActive } = this.state;
 
     const options = {
-      sizePerPage: 10,
+      page,
+      sizePerPage,
       paginationSize: 5,
+      sizePerPageList: [10, 25, 50],
       sizePerPageDropDown: this.renderSizePerPageDropDown,
+      onPageChange: this.handlePageChange,
+      onSortChange: this.handleSortChange,
+      onSearchChange: this.handleSearchChange,
     };
 
     return (
       <div>
         <Widget title={<h4>Users</h4>} collapse close>
-          <Link href="/admin/users/new">
-            <button className="btn btn-primary" type="button">
-              New
-            </button>
-          </Link>
+          <div className="d-flex justify-content-between align-items-center mb-3" style={{ flexWrap: "wrap", gap: 8 }}>
+            <Link href="/admin/users/new">
+              <button className="btn btn-primary" type="button">
+                New
+              </button>
+            </Link>
+            <div className="d-flex" style={{ gap: 8 }}>
+              <Input type="select" value={roleId} onChange={this.handleRoleFilterChange} style={{ width: 180 }}>
+                <option value="">All roles</option>
+                {ROLE_OPTIONS.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </Input>
+              <Input type="select" value={isActive} onChange={this.handleActiveFilterChange} style={{ width: 180 }}>
+                <option value="">Active/Inactive</option>
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </Input>
+            </div>
+          </div>
           <BootstrapTable
             bordered={false}
             data={rows}
             version="4"
+            remote
+            fetchInfo={{ dataTotalSize: totalSize }}
             pagination
             options={options}
             search
@@ -128,17 +221,16 @@ class UsersListTable extends Component {
               <span className="fs-sm">E-mail</span>
             </TableHeaderColumn>
 
-            <TableHeaderColumn dataField="phone" dataSort>
+            <TableHeaderColumn dataField="phone">
               <span className="fs-sm">Phone</span>
             </TableHeaderColumn>
 
-            <TableHeaderColumn dataField="roleName" dataSort>
+            <TableHeaderColumn dataField="roleName">
               <span className="fs-sm">Role</span>
             </TableHeaderColumn>
 
             <TableHeaderColumn
               dataField="isActive"
-              dataSort
               dataFormat={(cell) => (cell ? "Yes" : "No")}
             >
               <span className="fs-sm">Active</span>
@@ -147,7 +239,7 @@ class UsersListTable extends Component {
             <TableHeaderColumn
               isKey
               dataField="id"
-              dataFormat={this.actionFormatter.bind(this)}
+              dataFormat={this.actionFormatter}
             >
               <span className="fs-sm">Actions</span>
             </TableHeaderColumn>
@@ -156,7 +248,7 @@ class UsersListTable extends Component {
 
         <Modal
           size="sm"
-          isOpen={this.props.modalOpen}
+          isOpen={this.state.modalOpen}
           toggle={() => this.closeModal()}
         >
           <ModalHeader toggle={() => this.closeModal()}>
@@ -179,22 +271,4 @@ class UsersListTable extends Component {
   }
 }
 
-function mapStateToProps(store) {
-  return {
-    loading: store.users.list.loading,
-    rows: store.users.list.rows,
-    modalOpen: store.users.list.modalOpen,
-    idToDelete: store.users.list.idToDelete,
-  };
-}
-
-export async function getServerSideProps(context) {
-  // const res = await axios.get("/products");
-  // const products = res.data.rows;
-
-  return {
-    props: {  }, // will be passed to the page component as props
-  };
-}
-
-export default connect(mapStateToProps)(withRouter(UsersListTable));
+export default withRouter(UsersListTable);

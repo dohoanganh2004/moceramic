@@ -8,7 +8,7 @@ import {
   ModalBody,
   Input,
 } from "reactstrap";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { useSelector } from "react-redux";
@@ -17,11 +17,15 @@ import productCenter from "public/images/e-commerce/details/1-center.png";
 import productLeft from "public/images/e-commerce/details/1-left.png";
 import person2 from "public/images/e-commerce/details/person2.jpg";
 import s from "./Product.module.scss";
+import { emitCartUpdated } from "utils/cartEvents";
+import resolveAssetUrl from "utils/resolveAssetUrl";
+import { formatVND } from "utils/formatCurrency";
 
 import InfoBlock from 'components/e-commerce/InfoBlock';
 import closeIcon from "public/images/e-commerce/details/close.svg";
 import preloaderImg from 'public/images/e-commerce/preloader.gif';
 import InstagramWidget from 'components/e-commerce/Instagram';
+import ImagePreviewGrid from 'components/ImagePreviewGrid';
 import axios from "axios";
 import Head from "next/head";
 import ReactImageMagnify from 'react-image-magnify';
@@ -67,6 +71,14 @@ const Id = ({ product }) => {
       }, 300);
   }, [product && product.id]);
 
+  React.useEffect(() => {
+    if (!product) return;
+    const variant = (product.variants || []).find((v) => v.id === selectedVariantId);
+    if (!variant) return;
+    const available = Math.max(0, (variant.quantityOnHand || 0) - (variant.quantityReserved || 0));
+    setQuantity((prevQuantity) => (available > 0 ? Math.min(prevQuantity, available) : 1));
+  }, [selectedVariantId]);
+
   if (!product) {
     return (
       <Container className={"mt-5 mb-5"}>
@@ -86,9 +98,13 @@ const Id = ({ product }) => {
           return (a.sortOrder || 0) - (b.sortOrder || 0);
         })
       : [];
-  const mainImage = images[0] && images[0].imageUrl;
+  const mainImage = resolveAssetUrl(images[0] && images[0].imageUrl);
   const variants = product.variants || [];
   const selectedVariant = variants.find((v) => v.id === selectedVariantId);
+  const availableQty = selectedVariant
+    ? Math.max(0, (selectedVariant.quantityOnHand || 0) - (selectedVariant.quantityReserved || 0))
+    : 0;
+  const isOutOfStock = !!selectedVariant && availableQty <= 0;
   const unitPrice = Number(
     (selectedVariant && selectedVariant.price) || product.basePrice || 0
   );
@@ -104,14 +120,47 @@ const Id = ({ product }) => {
       toast.error("This product is not available for purchase right now");
       return;
     }
+    if (isOutOfStock) {
+      toast.error("This item is out of stock");
+      return;
+    }
     axios
       .post(`/cart/items`, { variantId: selectedVariantId, quantity })
-      .then(() => {
+      .then((res) => {
+        emitCartUpdated(res.data.totalItems);
         toast.info("Product successfully added to your cart");
       })
       .catch(() => {
         toast.error("Could not add this item to your cart");
       });
+  };
+
+  const buyNow = () => {
+    if (!currentUser) {
+      toast.info("Please log in to buy this item");
+      if (typeof window !== "undefined") { window.location.href = "/login"; }
+      return;
+    }
+    if (!selectedVariantId) {
+      toast.error("This product is not available for purchase right now");
+      return;
+    }
+    if (isOutOfStock) {
+      toast.error("This item is out of stock");
+      return;
+    }
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("buyNowItem", JSON.stringify({
+        productId: product.id,
+        productName: product.name,
+        imageUrl: mainImage,
+        variantId: selectedVariantId,
+        variantSnapshot: [selectedVariant && selectedVariant.colorGlaze, selectedVariant && selectedVariant.size].filter(Boolean).join(' / '),
+        unitPrice,
+        quantity,
+      }));
+      window.location.href = "/order";
+    }
   };
 
   const addToWishlist = () => {
@@ -170,7 +219,6 @@ const Id = ({ product }) => {
         <meta name="description" content="Beautifully designed web application template built with React and Bootstrap to create modern apps and speed up development" />
         <meta charSet="utf-8" />
       </Head>
-      <ToastContainer />
       <Container>
         {fetching ? (
           <div style={{ height: 480 }} className={"d-flex justify-content-center align-items-center"}>
@@ -205,7 +253,7 @@ const Id = ({ product }) => {
                   style={{ width: 160 }}
                 >
                   {images.slice(1, 4).map((img, i) => (
-                    <img key={img.id || i} src={img.imageUrl} width={160} alt={product.name} />
+                    <img key={img.id || i} src={resolveAssetUrl(img.imageUrl)} width={160} alt={product.name} />
                   ))}
                 </div>
               ) : null}
@@ -229,12 +277,21 @@ const Id = ({ product }) => {
                     onChange={(e) => setSelectedVariantId(Number(e.target.value))}
                     style={{ maxWidth: 260 }}
                   >
-                    {variants.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {[v.colorGlaze, v.size].filter(Boolean).join(' / ') || v.sku}
-                      </option>
-                    ))}
+                    {variants.map((v) => {
+                      const vAvailable = Math.max(0, (v.quantityOnHand || 0) - (v.quantityReserved || 0));
+                      const label = [v.colorGlaze, v.size].filter(Boolean).join(' / ') || v.sku;
+                      return (
+                        <option key={v.id} value={v.id}>
+                          {vAvailable <= 0 ? `${label} (Out of Stock)` : label}
+                        </option>
+                      );
+                    })}
                   </Input>
+                ) : null}
+                {isOutOfStock ? (
+                  <span className={"text-danger fw-bold text-uppercase"} style={{ fontSize: 13 }}>
+                    Out of Stock
+                  </span>
                 ) : null}
                 <div className={"d-flex"}>
                   <div className={"d-flex flex-column mr-5 justify-content-between"}>
@@ -252,8 +309,11 @@ const Id = ({ product }) => {
                       <p className={"fw-bold mb-0"}>{quantity}</p>
                       <Button
                         className={`bg-transparent border-0 p-1 fw-bold ml-3 ${s.quantityBtn}`}
+                        disabled={isOutOfStock}
                         onClick={() => {
-                          setQuantity((prevState) => prevState + 1);
+                          setQuantity((prevState) =>
+                            selectedVariant && prevState >= availableQty ? prevState : prevState + 1
+                          );
                         }}
                       >
                         +
@@ -262,7 +322,7 @@ const Id = ({ product }) => {
                   </div>
                   <div className={"d-flex flex-column justify-content-between"}>
                     <h6 className={"fw-bold text-muted text-uppercase"}>Price</h6>
-                    <h6 className={"fw-bold"}>${totalPrice}</h6>
+                    <h6 className={"fw-bold"}>{formatVND(totalPrice)}</h6>
                   </div>
                 </div>
               </div>
@@ -270,16 +330,24 @@ const Id = ({ product }) => {
                 <Button
                   outline
                   color={"primary"}
-                  className={"flex-fill mr-4 text-uppercase fw-bold"}
-                  style={{ width: "50%" }}
+                  className={"flex-fill mr-3 text-uppercase fw-bold"}
+                  disabled={isOutOfStock}
                   onClick={addToCart}
                 >
-                  Add to Cart
+                  {isOutOfStock ? "Out of Stock" : "Add to Cart"}
                 </Button>
                 <Button
                   color={"primary"}
+                  className={"flex-fill mr-3 text-uppercase fw-bold"}
+                  disabled={isOutOfStock}
+                  onClick={buyNow}
+                >
+                  Buy Now
+                </Button>
+                <Button
+                  outline
+                  color={"primary"}
                   className={"flex-fill text-uppercase fw-bold"}
-                  style={{ width: "50%" }}
                   onClick={addToWishlist}
                 >
                   Add to Wishlist
@@ -334,6 +402,10 @@ const Id = ({ product }) => {
                   accept="image/*"
                   className="w-100 mt-3"
                   onChange={(e) => setReviewFiles(Array.from(e.target.files || []))}
+                />
+                <ImagePreviewGrid
+                  files={reviewFiles}
+                  onRemove={(index) => setReviewFiles((prev) => prev.filter((_, i) => i !== index))}
                 />
                 <div className={"d-flex justify-content-center"}>
                   <Button
@@ -390,7 +462,7 @@ const Id = ({ product }) => {
                   {item.imageUrls && item.imageUrls.length > 0 ? (
                     <div className={"d-flex mt-2"}>
                       {item.imageUrls.map((url, i) => (
-                        <img key={i} src={url} width={70} height={70} style={{ objectFit: "cover", marginRight: 8 }} alt={"review"} />
+                        <img key={i} src={resolveAssetUrl(url)} width={70} height={70} style={{ objectFit: "cover", marginRight: 8 }} alt={"review"} />
                       ))}
                     </div>
                   ) : null}

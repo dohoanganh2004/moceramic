@@ -1,21 +1,5 @@
 import { toast } from "react-toastify";
-// import { store } from "pages/_app";
-
-const DEFAULT_ERROR_MESSAGE = "Error";
-
-function selectErrorMessage(error) {
-  if (error && error.response && error.response.data) {
-    const data = error.response.data;
-
-    if (data.error && data.error.message) {
-      return data.error.message;
-    }
-
-    return String(data);
-  }
-
-  return error.message || DEFAULT_ERROR_MESSAGE;
-}
+import getErrorMessage from "utils/getErrorMessage";
 
 function selectErrorCode(error) {
   if (error && error.response && error.response.status) {
@@ -28,21 +12,11 @@ function selectErrorCode(error) {
 export default class Errors {
   static handle(error) {
     if (process.env.NODE_ENV !== "test") {
-      console.error(selectErrorMessage(error));
+      console.error(getErrorMessage(error));
       console.error(error);
     }
 
-    if (selectErrorCode(error) === 403) {
-      // store.dispatch(push("/403"));
-      return;
-    }
-
-    if (selectErrorCode(error) === 400) {
-      toast.error(selectErrorMessage(error));
-      return;
-    }
-
-    // store.dispatch(push("/500"));
+    toast.error(getErrorMessage(error));
   }
 
   static errorCode(error) {
@@ -50,10 +24,10 @@ export default class Errors {
   }
 
   static selectMessage(error) {
-    return selectErrorMessage(error);
+    return getErrorMessage(error);
   }
 
   static showMessage(error) {
-    toast.error(selectErrorMessage(error));
+    toast.error(getErrorMessage(error));
   }
 }

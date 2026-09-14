@@ -15,12 +15,16 @@ import article2 from "public/images/e-commerce/home/article2.jpg";
 import article3 from "public/images/e-commerce/home/article3.jpg";
 
 
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import {useDispatch, useSelector} from "react-redux";
 
 import Countdown from "./home/Countdown";
 import rating from "../public/images/e-commerce/details/stars.svg";
 import productsListActions from "../redux/actions/products/productsListActions";
+import useWishlist from "hooks/useWishlist";
+import { emitCartUpdated } from "utils/cartEvents";
+import resolveAssetUrl from "utils/resolveAssetUrl";
+import { formatVND } from "utils/formatCurrency";
 
 const Index = ({ products: serverSideProducts }) => {
   const [quantity, setQuantity] = React.useState(1);
@@ -97,6 +101,7 @@ const Index = ({ products: serverSideProducts }) => {
     open8: false,
   });
   const currentUser = useSelector((store) => store.auth.currentUser);
+  const { wishlistIds, toggleWishlist } = useWishlist(currentUser);
 
   const addToCart = (product, quantity = 1) => {
     if (!currentUser) {
@@ -111,7 +116,8 @@ const Index = ({ products: serverSideProducts }) => {
     }
     axios
       .post(`/cart/items`, { variantId, quantity })
-      .then(() => {
+      .then((res) => {
+        emitCartUpdated(res.data.totalItems);
         toast.info("Product successfully added to your cart");
       })
       .catch(() => {
@@ -119,20 +125,29 @@ const Index = ({ products: serverSideProducts }) => {
       });
   };
 
-  const addToWishlist = (productId) => {
+  const buyNow = (product, quantity = 1) => {
     if (!currentUser) {
-      toast.info("Please log in to add items to your wishlist");
+      toast.info("Please log in to buy this item");
       if (typeof window !== "undefined") { window.location.href = "/login"; }
       return;
     }
-    axios
-      .post(`/wishlist`, { productId })
-      .then(() => {
-        toast.info("Product successfully added to your wishlist");
-      })
-      .catch(() => {
-        toast.error("Could not add this item to your wishlist");
-      });
+    const variant = product && product.variants && product.variants[0];
+    if (!variant) {
+      toast.error("This product is not available for purchase right now");
+      return;
+    }
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("buyNowItem", JSON.stringify({
+        productId: product.id,
+        productName: product.name,
+        imageUrl: resolveAssetUrl(product.images?.[0]?.imageUrl),
+        variantId: variant.id,
+        variantSnapshot: [variant.colorGlaze, variant.size].filter(Boolean).join(' / '),
+        unitPrice: variant.price || product.basePrice || 0,
+        quantity,
+      }));
+      window.location.href = "/order";
+    }
   };
 
   const secsInterval = () => {
@@ -172,7 +187,6 @@ const Index = ({ products: serverSideProducts }) => {
         <meta property="og:site_name" content="Flatlogic"/>
         <meta name="twitter:site" content="@flatlogic" />
       </Head>
-      <ToastContainer />
       <Carousel prevLabel="prev" nextLabel="next">
         <Carousel.Item interval={1000}>
           <section className={`${s.carousel} ${s.firstImg}`}>
@@ -326,7 +340,7 @@ const Index = ({ products: serverSideProducts }) => {
                 <div className={s.modalWidndow}>
                   <div className={s.image}>
                     <img
-                      src={item.images?.[0]?.imageUrl}
+                      src={resolveAssetUrl(item.images?.[0]?.imageUrl)}
                       width={"100%"}
                       height={"100%"}
                       alt="img"
@@ -396,7 +410,7 @@ const Index = ({ products: serverSideProducts }) => {
                         <h6 className={"fw-bold text-muted text-uppercase"}>
                           Price
                         </h6>
-                        <h6 className={"fw-bold"}>{item.basePrice}$</h6>
+                        <h6 className={"fw-bold"}>{formatVND(item.basePrice)}</h6>
                       </div>
                     </div>
                     <div className={"d-flex mt-5"}>
@@ -411,18 +425,16 @@ const Index = ({ products: serverSideProducts }) => {
                       >
                         Add to Cart
                       </Button>
-                      <Link
-                        href={"/billing"}
-                        className={"d-inline-block flex-fill"}
+                      <Button
+                        color={"primary"}
+                        className={"flex-fill text-uppercase fw-bold"}
+                        style={{ width: "50%" }}
+                        onClick={() => {
+                          buyNow(item, quantity);
+                        }}
                       >
-                        <Button
-                          color={"primary"}
-                          className={"text-uppercase fw-bold"}
-                          style={{ width: "50%" }}
-                        >
-                          Buy now
-                        </Button>
-                      </Link>
+                        Buy now
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -432,7 +444,7 @@ const Index = ({ products: serverSideProducts }) => {
                   <a>
                     <div
                       style={{
-                        background: `url(${item.images?.[0]?.imageUrl}) no-repeat center`,
+                        background: `url(${resolveAssetUrl(item.images?.[0]?.imageUrl)}) no-repeat center`,
                         backgroundSize: "contain",
                         transition: "all .65s ease",
                       }}
@@ -452,10 +464,14 @@ const Index = ({ products: serverSideProducts }) => {
                   <Button
                     className={"p-0 bg-transparent border-0"}
                     onClick={() => {
-                      addToWishlist(item.id);
+                      toggleWishlist(item.id);
                     }}
                   >
-                    <div className={`mb-4 ${s.product__actions__heart}`} />
+                    <div
+                      className={`mb-4 ${s.product__actions__heart} ${
+                        wishlistIds.has(item.id) ? s.product__actions__heart_active : ""
+                      }`}
+                    />
                   </Button>
                   <Button
                     className={"p-0 bg-transparent border-0"}
@@ -492,7 +508,7 @@ const Index = ({ products: serverSideProducts }) => {
                       </h6>
                     </a>
                   </Link>
-                  <h6 style={{ fontSize: 16 }}>${item.basePrice}</h6>
+                  <h6 style={{ fontSize: 16 }}>{formatVND(item.basePrice)}</h6>
                 </div>
               </div>
             </Col>
@@ -538,9 +554,9 @@ const Index = ({ products: serverSideProducts }) => {
                 <h2
                   className={"text-muted mr-3 mb-0 d-flex align-items-center"}
                 >
-                  <del>$ 140,56</del>
+                  <del>{formatVND(140.56)}</del>
                 </h2>
-                <h1 className={"text-primary fw-bold mb-0"}>$ 70</h1>
+                <h1 className={"text-primary fw-bold mb-0"}>{formatVND(70)}</h1>
               </section>
             </Col>
           </Row>

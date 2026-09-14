@@ -18,6 +18,7 @@ export class InputFormItemNotFast extends Component {
       errorMessage,
       required,
       disabled,
+      onValueChange,
     } = this.props;
 
     const { label } = this.props.schema[name];
@@ -52,6 +53,7 @@ export class InputFormItemNotFast extends Component {
           onChange={(event) => {
             form.setFieldValue(name, event.target.value);
             form.setFieldTouched(name);
+            if (onValueChange) onValueChange(event.target.value, form);
           }}
           disabled={disabled}
           value={form.values[name] || ""}

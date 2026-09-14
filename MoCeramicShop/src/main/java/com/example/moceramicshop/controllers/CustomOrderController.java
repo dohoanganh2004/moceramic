@@ -3,6 +3,7 @@ package com.example.moceramicshop.controllers;
 import com.example.moceramicshop.dtos.request.customorder.CustomOrderAdminUpdateRequestDTO;
 import com.example.moceramicshop.dtos.response.customorder.CustomOrderResponseDTO;
 import com.example.moceramicshop.security.CustomUserDetails;
+import com.example.moceramicshop.security.PermissionGuard;
 import com.example.moceramicshop.services.CustomOrderService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -28,9 +29,11 @@ import java.util.Set;
 public class CustomOrderController {
 
     private final CustomOrderService customOrderService;
+    private final PermissionGuard permissionGuard;
 
-    public CustomOrderController(CustomOrderService customOrderService) {
+    public CustomOrderController(CustomOrderService customOrderService, PermissionGuard permissionGuard) {
         this.customOrderService = customOrderService;
+        this.permissionGuard = permissionGuard;
     }
 
     private static final Set<String> SORTABLE_FIELDS = Set.of("contactName", "status", "quantity", "createdAt");
@@ -42,7 +45,9 @@ public class CustomOrderController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "custom_orders");
         String field = SORTABLE_FIELDS.contains(sortBy) ? sortBy : "createdAt";
         Sort sort = "asc".equalsIgnoreCase(sortDir) ? Sort.by(field).ascending() : Sort.by(field).descending();
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), sort);
@@ -55,18 +60,22 @@ public class CustomOrderController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<CustomOrderResponseDTO> getById(@PathVariable Long id) {
+    public ResponseEntity<CustomOrderResponseDTO> getById(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "custom_orders");
         return ResponseEntity.ok(customOrderService.getById(id));
     }
 
     @PatchMapping("/{id}")
     public ResponseEntity<CustomOrderResponseDTO> adminUpdate(@PathVariable Long id,
-                                                                 @Valid @RequestBody CustomOrderAdminUpdateRequestDTO dto) {
+                                                                 @Valid @RequestBody CustomOrderAdminUpdateRequestDTO dto,
+                                                                 @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "custom_orders");
         return ResponseEntity.ok(customOrderService.adminUpdate(id, dto));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "custom_orders");
         customOrderService.delete(id);
         return ResponseEntity.noContent().build();
     }

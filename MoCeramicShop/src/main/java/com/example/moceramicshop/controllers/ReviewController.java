@@ -3,6 +3,7 @@ package com.example.moceramicshop.controllers;
 import com.example.moceramicshop.dtos.request.review.ReviewRequestDTO;
 import com.example.moceramicshop.dtos.response.review.ReviewResponseDTO;
 import com.example.moceramicshop.security.CustomUserDetails;
+import com.example.moceramicshop.security.PermissionGuard;
 import com.example.moceramicshop.services.ReviewService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -26,13 +27,16 @@ import java.util.List;
 public class ReviewController {
 
     private final ReviewService reviewService;
+    private final PermissionGuard permissionGuard;
 
-    public ReviewController(ReviewService reviewService) {
+    public ReviewController(ReviewService reviewService, PermissionGuard permissionGuard) {
         this.reviewService = reviewService;
+        this.permissionGuard = permissionGuard;
     }
 
     @GetMapping("/api/reviews")
-    public ResponseEntity<List<ReviewResponseDTO>> getAll() {
+    public ResponseEntity<List<ReviewResponseDTO>> getAll(@AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "feedback");
         return ResponseEntity.ok(reviewService.getAll());
     }
 

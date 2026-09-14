@@ -668,3 +668,41 @@ $i: 0;
   -webkit-transform: translate3d(0, 0, 0) scale(1);
   transform: translate3d(0, 0, 0) scale(1);
 }
+
+// Slide + fade page transition, used by PageTransition component
+.page-slide-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.slide-enter {
+  opacity: 0;
+  -webkit-transform: translate3d(24px, 0, 0);
+  transform: translate3d(24px, 0, 0);
+}
+
+.slide-enter.slide-enter-active {
+  opacity: 1;
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+  transition: opacity 260ms ease, -webkit-transform 260ms ease,
+    transform 260ms ease;
+}
+
+.slide-exit {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  opacity: 1;
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+}
+
+.slide-exit.slide-exit-active {
+  opacity: 0;
+  -webkit-transform: translate3d(-24px, 0, 0);
+  transform: translate3d(-24px, 0, 0);
+  transition: opacity 200ms ease, -webkit-transform 200ms ease,
+    transform 200ms ease;
+}

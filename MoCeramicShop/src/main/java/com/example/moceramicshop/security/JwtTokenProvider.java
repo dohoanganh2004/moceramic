@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -32,16 +33,17 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateAccessToken(CustomUserDetails userDetails) {
+    public String generateAccessToken(CustomUserDetails userDetails, List<String> permissionCodes) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtProperties.getExpiration());
-        Map<String, String> claims = new HashMap<>();
+        Map<String, Object> claims = new HashMap<>();
         claims.put("typ", TOKEN_TYPE_ACCESS);
 
         claims.put("role", userDetails.getUser().getRole().getId().toString());
         claims.put("role-name", userDetails.getUser().getRole().getName());
         claims.put("email", userDetails.getUser().getEmail());
         claims.put("fullName", userDetails.getUser().getFullName());
+        claims.put("permissions", permissionCodes != null ? permissionCodes : List.of());
         return Jwts.builder()
                 .setClaims(claims)
                 .setId(UUID.randomUUID().toString())

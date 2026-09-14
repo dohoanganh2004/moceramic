@@ -15,21 +15,15 @@ class Index extends Component {
     if (this.isEditing()) {
       dispatch(actions.doFind(router.query.id));
     } else {
-      if (this.isProfile()) {
-        const currentUser = typeof window !== 'undefined' && JSON.parse(localStorage.getItem("user"));
-        const currentUserId = currentUser.user.id;
-        dispatch(actions.doFind(currentUserId));
-      } else {
-        dispatch(actions.doNew());
-      }
+      dispatch(actions.doNew());
     }
     this.setState({ dispatched: true });
   }
 
   doSubmit = (id, data) => {
     const { dispatch } = this.props;
-    if (this.isEditing() || this.isProfile()) {
-      dispatch(actions.doUpdate(id, data, this.isProfile()));
+    if (this.isEditing()) {
+      dispatch(actions.doUpdate(id, data));
     } else {
       dispatch(actions.doCreate(data));
     }
@@ -38,11 +32,6 @@ class Index extends Component {
   isEditing = () => {
     const { router } = this.props;
     return !!router.query.id;
-  };
-
-  isProfile = () => {
-    const { router } = this.props;
-    return router.pathname === "/app/profile";
   };
 
   render() {
@@ -74,12 +63,8 @@ class Index extends Component {
           <UsersForm
             saveLoading={this.props.saveLoading}
             findLoading={this.props.findLoading}
-            currentUser={this.props.currentUser}
-            record={
-              this.isEditing() || this.isProfile() ? this.props.record : {}
-            }
+            record={this.isEditing() ? this.props.record : {}}
             isEditing={this.isEditing()}
-            isProfile={this.isProfile()}
             onSubmit={this.doSubmit}
             onCancel={() => this.props.router.push("/admin/users")}
           />
@@ -94,7 +79,6 @@ function mapStateToProps(store) {
     findLoading: store.users.form.findLoading,
     saveLoading: store.users.form.saveLoading,
     record: store.users.form.record,
-    currentUser: store.auth.currentUser,
   };
 }
 

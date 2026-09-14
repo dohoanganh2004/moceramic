@@ -4,7 +4,6 @@ import {
   Row,
   Col,
 } from "reactstrap";
-import { ToastContainer } from "react-toastify";
 import Link from "next/link";
 import product1 from "public/images/e-commerce/home/product1.png";
 import product2 from "public/images/e-commerce/home/product2.png";
@@ -12,6 +11,7 @@ import product3 from "public/images/e-commerce/home/product3.png";
 import product4 from "public/images/e-commerce/home/product4.png";
 import mainBanner from "public/images/e-commerce/main_banner.jpg"
 import s from "./Categories.module.scss";
+import { formatVND } from "utils/formatCurrency";
 
 import InfoBlock from 'components/e-commerce/InfoBlock';
 import InstagramWidget from 'components/e-commerce/Instagram';
@@ -89,7 +89,6 @@ const Categories = () => {
         <meta property="og:site_name" content="Flatlogic"/>
         <meta name="twitter:site" content="@flatlogic" />
       </Head>
-      <ToastContainer />
       <Container className={s.bannersContainer}>
         <Row>
           <Col md={12}>
@@ -191,7 +190,7 @@ const Categories = () => {
                           </h6>
                         </a>
                       </Link>
-                      <h6 style={{ fontSize: 16 }}>$70</h6>
+                      <h6 style={{ fontSize: 16 }}>{formatVND(70)}</h6>
                     </Col>
                   </Slide>
               ))}

@@ -6,6 +6,7 @@ import { connect } from "react-redux";
 import { Alert, Button, Container } from "reactstrap";
 import Widget from "components/admin/Widget";
 import { authError, resetPassword } from "redux/actions/auth";
+import { toast } from "react-toastify";
 import Head from 'next/head';
 
 class Index extends React.Component {
@@ -38,11 +39,9 @@ class Index extends React.Component {
 
   checkPassword() {
     if (!this.isPasswordValid()) {
-      if (!this.state.password) {
-        this.props.dispatch(authError("Password field is empty"));
-      } else {
-        this.props.dispatch(authError("Passwords are not equal"));
-      }
+      const message = !this.state.password ? "Password field is empty" : "Passwords are not equal";
+      this.props.dispatch(authError(message));
+      toast.error(message);
       setTimeout(() => {
         this.props.dispatch(authError());
       }, 3 * 1000);
@@ -61,7 +60,8 @@ class Index extends React.Component {
     const params = new URLSearchParams(search);
     const token = params.get("token");
     if (!token) {
-      authError("There are no token");
+      toast.error("Missing or invalid reset token");
+      return;
     }
 
     if (!this.isPasswordValid()) {

@@ -1,7 +1,7 @@
-import actions from "redux/actions/orders/ordersListActions";
 import React, { Component } from "react";
-import { connect } from "react-redux";
 import { withRouter } from "next/router"
+import axios from "axios";
+import { toast } from "react-toastify";
 import {
   Dropdown,
   DropdownMenu,
@@ -12,36 +12,134 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  Input,
 } from "reactstrap";
 
 import { BootstrapTable, TableHeaderColumn } from "react-bootstrap-table";
 
 import Widget from "components/admin/Widget";
+import formatCurrency from "utils/formatCurrency";
+
+const STATUS_OPTIONS = ["pending", "confirmed", "processing", "shipping", "delivered", "cancelled"];
 
 class OrdersListTable extends Component {
   state = {
+    rows: [],
+    totalSize: 0,
+    page: 1,
+    sizePerPage: 10,
+    sortName: "createdAt",
+    sortOrder: "desc",
+    searchText: "",
+    status: "",
     modalOpen: false,
     idToDelete: null,
+    updatingStatusIds: [],
+  };
+
+  componentDidMount() {
+    this.fetchRows();
+  }
+
+  fetchRows = () => {
+    const { page, sizePerPage, sortName, sortOrder, searchText, status } = this.state;
+    axios
+      .get("/order/search", {
+        params: {
+          search: searchText || undefined,
+          status: status || undefined,
+          sortBy: sortName,
+          sortDir: sortOrder,
+          page: page - 1,
+          size: sizePerPage,
+        },
+      })
+      .then((res) => {
+        this.setState({ rows: res.data.content, totalSize: res.data.totalElements });
+      })
+      .catch(() => toast.error("Could not load orders"));
+  };
+
+  handlePageChange = (page, sizePerPage) => {
+    this.setState({ page, sizePerPage }, this.fetchRows);
+  };
+
+  handleSortChange = (sortName, sortOrder) => {
+    this.setState({ sortName, sortOrder, page: 1 }, this.fetchRows);
+  };
+
+  handleSearchChange = (searchText) => {
+    this.setState({ searchText, page: 1 }, this.fetchRows);
+  };
+
+  handleStatusFilterChange = (e) => {
+    this.setState({ status: e.target.value, page: 1 }, this.fetchRows);
+  };
+
+  handleRowStatusChange = (orderId, newStatus) => {
+    const previousRows = this.state.rows;
+    this.setState((prev) => ({
+      updatingStatusIds: [...prev.updatingStatusIds, orderId],
+      rows: prev.rows.map((r) => (r.id === orderId ? { ...r, status: newStatus } : r)),
+    }));
+
+    axios
+      .patch(`/order/${orderId}/status`, { status: newStatus })
+      .then(() => toast.success("Order status updated"))
+      .catch(() => {
+        toast.error("Could not update order status");
+        this.setState({ rows: previousRows });
+      })
+      .finally(() => {
+        this.setState((prev) => ({
+          updatingStatusIds: prev.updatingStatusIds.filter((id) => id !== orderId),
+        }));
+      });
   };
 
   handleDelete() {
-    const id = this.props.idToDelete;
-    this.props.dispatch(actions.doDelete(id));
+    const id = this.state.idToDelete;
+    axios
+      .delete(`/order/${id}`)
+      .then(() => {
+        this.closeModal();
+        this.fetchRows();
+      })
+      .catch(() => {
+        toast.error("Could not delete this order");
+        this.closeModal();
+      });
   }
 
-  openModal(cell) {
-    const id = cell;
-    this.props.dispatch(actions.doOpenConfirm(id));
+  openModal(id) {
+    this.setState({ modalOpen: true, idToDelete: id });
   }
 
   closeModal() {
-    this.props.dispatch(actions.doCloseConfirm());
+    this.setState({ modalOpen: false, idToDelete: null });
   }
 
-  actionFormatter(cell) {
+  statusFormatter = (cell, row) => {
+    const isUpdating = this.state.updatingStatusIds.includes(row.id);
+    return (
+      <Input
+        type="select"
+        bsSize="sm"
+        value={cell}
+        disabled={isUpdating}
+        onChange={(e) => this.handleRowStatusChange(row.id, e.target.value)}
+        style={{ minWidth: 140 }}
+      >
+        {STATUS_OPTIONS.map((s) => (
+          <option key={s} value={s}>{s}</option>
+        ))}
+      </Input>
+    );
+  };
+
+  actionFormatter = (cell) => {
     return (
       <div>
-    
         <Button
           color="default"
           size="xs"
@@ -65,12 +163,7 @@ class OrdersListTable extends Component {
         </Button>
       </div>
     );
-  }
-
-  componentDidMount() {
-    const { dispatch } = this.props;
-    dispatch(actions.doFetch({}));
-  }
+  };
 
   renderSizePerPageDropDown = (props) => {
     const limits = [];
@@ -86,7 +179,7 @@ class OrdersListTable extends Component {
     });
 
     return (
-      <Dropdown isOpen={props.open} toggle={props.toggleDropDown}>
+      <Dropdown isOpen={props.open} toggle={props.toggleDropDown} modifiers={{ flip: { enabled: false } }}>
         <DropdownToggle color="default" caret>
           {props.currSizePerPage}
         </DropdownToggle>
@@ -96,21 +189,36 @@ class OrdersListTable extends Component {
   };
 
   render() {
-    const { rows } = this.props;
+    const { rows, totalSize, page, sizePerPage, status } = this.state;
 
     const options = {
-      sizePerPage: 10,
+      page,
+      sizePerPage,
       paginationSize: 5,
+      sizePerPageList: [10, 25, 50],
       sizePerPageDropDown: this.renderSizePerPageDropDown,
+      onPageChange: this.handlePageChange,
+      onSortChange: this.handleSortChange,
+      onSearchChange: this.handleSearchChange,
     };
 
     return (
       <div>
         <Widget title={<h4>Orders</h4>} collapse close>
+          <div className="d-flex justify-content-end mb-3">
+            <Input type="select" value={status} onChange={this.handleStatusFilterChange} style={{ width: 200 }}>
+              <option value="">All statuses</option>
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </Input>
+          </div>
           <BootstrapTable
             bordered={false}
             data={rows}
             version="4"
+            remote
+            fetchInfo={{ dataTotalSize: totalSize }}
             pagination
             options={options}
             search
@@ -128,22 +236,22 @@ class OrdersListTable extends Component {
               <span className="fs-sm">Order Code</span>
             </TableHeaderColumn>
 
-            <TableHeaderColumn dataField="userName" dataSort>
+            <TableHeaderColumn dataField="userName">
               <span className="fs-sm">Customer</span>
             </TableHeaderColumn>
 
-            <TableHeaderColumn dataField="totalAmount" dataSort>
+            <TableHeaderColumn dataField="totalAmount" dataSort dataFormat={(cell) => formatCurrency(cell)}>
               <span className="fs-sm">Total</span>
             </TableHeaderColumn>
 
-            <TableHeaderColumn dataField="status" dataSort>
+            <TableHeaderColumn dataField="status" dataSort dataFormat={this.statusFormatter}>
               <span className="fs-sm">Status</span>
             </TableHeaderColumn>
 
             <TableHeaderColumn
               isKey
               dataField="id"
-              dataFormat={this.actionFormatter.bind(this)}
+              dataFormat={this.actionFormatter}
             >
               <span className="fs-sm">Actions</span>
             </TableHeaderColumn>
@@ -152,7 +260,7 @@ class OrdersListTable extends Component {
 
         <Modal
           size="sm"
-          isOpen={this.props.modalOpen}
+          isOpen={this.state.modalOpen}
           toggle={() => this.closeModal()}
         >
           <ModalHeader toggle={() => this.closeModal()}>
@@ -175,22 +283,4 @@ class OrdersListTable extends Component {
   }
 }
 
-function mapStateToProps(store) {
-  return {
-    loading: store.orders.list.loading,
-    rows: store.orders.list.rows,
-    modalOpen: store.orders.list.modalOpen,
-    idToDelete: store.orders.list.idToDelete,
-  };
-}
-
-export async function getServerSideProps(context) {
-  // const res = await axios.get("/products");
-  // const products = res.data.rows;
-
-  return {
-    props: {  }, // will be passed to the page component as props
-  };
-}
-
-export default connect(mapStateToProps)(withRouter(OrdersListTable));
+export default withRouter(OrdersListTable);

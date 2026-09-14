@@ -2,9 +2,11 @@ import React, { Component } from "react";
 import { FormGroup, Label, Input, Button } from "reactstrap";
 import Loader from "components/admin/Loader";
 import Widget from "components/admin/Widget";
+import ImagePreviewGrid from "components/ImagePreviewGrid";
+import slugify from "utils/slugify";
 import axios from "axios";
 
-const emptyVariant = { sku: "", colorGlaze: "", size: "", price: "", weightGrams: "", dimensions: "" };
+const emptyVariant = { sku: "", colorGlaze: "", size: "", price: "", weightGrams: "", dimensions: "", quantityOnHand: "" };
 
 class ProductsForm extends Component {
   state = {
@@ -19,6 +21,7 @@ class ProductsForm extends Component {
     basePrice: "",
     variants: [{ ...emptyVariant }],
     files: [],
+    slugEdited: false,
   };
 
   componentDidMount() {
@@ -26,6 +29,15 @@ class ProductsForm extends Component {
   }
 
   setField = (field, value) => this.setState({ [field]: value });
+
+  setName = (value) => {
+    this.setState((prev) => ({
+      name: value,
+      slug: prev.slugEdited ? prev.slug : slugify(value),
+    }));
+  };
+
+  setSlug = (value) => this.setState({ slug: value, slugEdited: true });
 
   setVariantField = (index, field, value) => {
     const variants = [...this.state.variants];
@@ -61,6 +73,7 @@ class ProductsForm extends Component {
           price: Number(v.price),
           weightGrams: v.weightGrams ? Number(v.weightGrams) : null,
           dimensions: v.dimensions,
+          quantityOnHand: v.quantityOnHand ? Number(v.quantityOnHand) : 0,
         })),
     };
     this.props.onSubmit(null, { dto, files });
@@ -84,11 +97,12 @@ class ProductsForm extends Component {
           </FormGroup>
           <FormGroup>
             <Label className="fw-bold">Name*</Label>
-            <Input value={name} onChange={(e) => this.setField("name", e.target.value)} required />
+            <Input value={name} onChange={(e) => this.setName(e.target.value)} required />
           </FormGroup>
           <FormGroup>
             <Label className="fw-bold">Slug*</Label>
-            <Input value={slug} onChange={(e) => this.setField("slug", e.target.value)} placeholder="lowercase-with-hyphens" required />
+            <Input value={slug} onChange={(e) => this.setSlug(e.target.value)} placeholder="lowercase-with-hyphens" required />
+            <p className="text-muted mt-1 mb-0" style={{ fontSize: 12 }}>Tự tạo từ tên sản phẩm, có thể sửa lại nếu cần.</p>
           </FormGroup>
           <FormGroup>
             <Label className="fw-bold">Description</Label>
@@ -141,10 +155,17 @@ class ProductsForm extends Component {
                 <Label className="mb-0" style={{ fontSize: 12 }}>Dimensions</Label>
                 <Input value={v.dimensions} onChange={(e) => this.setVariantField(i, "dimensions", e.target.value)} style={{ width: 120 }} />
               </div>
+              <div>
+                <Label className="mb-0" style={{ fontSize: 12 }}>Stock Qty</Label>
+                <Input type="number" min="0" value={v.quantityOnHand} onChange={(e) => this.setVariantField(i, "quantityOnHand", e.target.value)} style={{ width: 100 }} />
+              </div>
               <Button type="button" color="danger" size="sm" onClick={() => this.removeVariantRow(i)}>Remove</Button>
             </div>
           ))}
-          <Button type="button" color="secondary" size="sm" className="mb-4" onClick={this.addVariantRow}>+ Add Variant</Button>
+          <Button type="button" color="secondary" size="sm" className="mb-1" onClick={this.addVariantRow}>+ Add Variant</Button>
+          <p className="text-muted mb-4" style={{ fontSize: 12 }}>
+            Products with 0 stock across all variants are hidden from the storefront until restocked.
+          </p>
 
           <hr />
           <FormGroup>
@@ -156,6 +177,11 @@ class ProductsForm extends Component {
               onChange={(e) => this.setField("files", Array.from(e.target.files || []))}
             />
             <p className="text-muted mt-1" style={{ fontSize: 12 }}>{files.length} file(s) selected. First image is set as primary.</p>
+            <ImagePreviewGrid
+              files={files}
+              primaryLabel="Primary"
+              onRemove={(index) => this.setField("files", files.filter((_, i) => i !== index))}
+            />
           </FormGroup>
 
           <div className="form-buttons">

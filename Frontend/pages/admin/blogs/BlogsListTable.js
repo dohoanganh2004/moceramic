@@ -1,8 +1,8 @@
 import { withRouter } from "next/router"
-import actions from "redux/actions/blogs/blogsListActions";
 import React, { Component } from "react";
 import Link from 'next/link'
-import { connect } from "react-redux";
+import axios from "axios";
+import { toast } from "react-toastify";
 
 import {
   Dropdown,
@@ -14,6 +14,7 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  Input,
 } from "reactstrap";
 
 import { BootstrapTable, TableHeaderColumn } from "react-bootstrap-table";
@@ -22,25 +23,80 @@ import Widget from "components/admin/Widget";
 
 class BlogsListTable extends Component {
   state = {
+    rows: [],
+    totalSize: 0,
+    page: 1,
+    sizePerPage: 10,
+    sortName: "createdAt",
+    sortOrder: "desc",
+    searchText: "",
+    status: "",
     modalOpen: false,
     idToDelete: null,
   };
 
-  handleDelete() {
-    const id = this.props.idToDelete;
-    this.props.dispatch(actions.doDelete(id));
+  componentDidMount() {
+    this.fetchRows();
   }
 
-  openModal(cell) {
-    const id = cell;
-    this.props.dispatch(actions.doOpenConfirm(id));
+  fetchRows = () => {
+    const { page, sizePerPage, sortName, sortOrder, searchText, status } = this.state;
+    axios
+      .get("/blog-posts/search", {
+        params: {
+          search: searchText || undefined,
+          status: status || undefined,
+          sortBy: sortName,
+          sortDir: sortOrder,
+          page: page - 1,
+          size: sizePerPage,
+        },
+      })
+      .then((res) => {
+        this.setState({ rows: res.data.content, totalSize: res.data.totalElements });
+      })
+      .catch(() => toast.error("Could not load blog posts"));
+  };
+
+  handlePageChange = (page, sizePerPage) => {
+    this.setState({ page, sizePerPage }, this.fetchRows);
+  };
+
+  handleSortChange = (sortName, sortOrder) => {
+    this.setState({ sortName, sortOrder, page: 1 }, this.fetchRows);
+  };
+
+  handleSearchChange = (searchText) => {
+    this.setState({ searchText, page: 1 }, this.fetchRows);
+  };
+
+  handleStatusFilterChange = (e) => {
+    this.setState({ status: e.target.value, page: 1 }, this.fetchRows);
+  };
+
+  handleDelete() {
+    const id = this.state.idToDelete;
+    axios
+      .delete(`/blog-posts/${id}`)
+      .then(() => {
+        this.closeModal();
+        this.fetchRows();
+      })
+      .catch(() => {
+        toast.error("Could not delete this post");
+        this.closeModal();
+      });
+  }
+
+  openModal(id) {
+    this.setState({ modalOpen: true, idToDelete: id });
   }
 
   closeModal() {
-    this.props.dispatch(actions.doCloseConfirm());
+    this.setState({ modalOpen: false, idToDelete: null });
   }
 
-  actionFormatter(cell) {
+  actionFormatter = (cell) => {
     return (
       <div>
         <Button
@@ -66,12 +122,7 @@ class BlogsListTable extends Component {
         </Button>
       </div>
     );
-  }
-
-  componentDidMount() {
-    const { dispatch } = this.props;
-    dispatch(actions.doFetch({}));
-  }
+  };
 
   renderSizePerPageDropDown = (props) => {
     const limits = [];
@@ -87,7 +138,7 @@ class BlogsListTable extends Component {
     });
 
     return (
-      <Dropdown isOpen={props.open} toggle={props.toggleDropDown}>
+      <Dropdown isOpen={props.open} toggle={props.toggleDropDown} modifiers={{ flip: { enabled: false } }}>
         <DropdownToggle color="default" caret>
           {props.currSizePerPage}
         </DropdownToggle>
@@ -97,25 +148,40 @@ class BlogsListTable extends Component {
   };
 
   render() {
-    const { rows } = this.props;
+    const { rows, totalSize, page, sizePerPage, status } = this.state;
+
     const options = {
-      sizePerPage: 10,
+      page,
+      sizePerPage,
       paginationSize: 5,
+      sizePerPageList: [10, 25, 50],
       sizePerPageDropDown: this.renderSizePerPageDropDown,
+      onPageChange: this.handlePageChange,
+      onSortChange: this.handleSortChange,
+      onSearchChange: this.handleSearchChange,
     };
 
     return (
       <div>
         <Widget title={<h4>Blogs</h4>} collapse close>
-          <Link href="/admin/blogs/new">
-            <button className="btn btn-primary" type="button">
-              New
-            </button>
-          </Link>
+          <div className="d-flex justify-content-between align-items-center mb-3" style={{ flexWrap: "wrap", gap: 8 }}>
+            <Link href="/admin/blogs/new">
+              <button className="btn btn-primary" type="button">
+                New
+              </button>
+            </Link>
+            <Input type="select" value={status} onChange={this.handleStatusFilterChange} style={{ width: 180 }}>
+              <option value="">All statuses</option>
+              <option value="draft">draft</option>
+              <option value="published">published</option>
+            </Input>
+          </div>
           <BootstrapTable
             bordered={false}
             data={rows}
             version="4"
+            remote
+            fetchInfo={{ dataTotalSize: totalSize }}
             pagination
             options={options}
             search
@@ -132,7 +198,7 @@ class BlogsListTable extends Component {
               <span className="fs-sm">Title</span>
             </TableHeaderColumn>
 
-            <TableHeaderColumn dataField="authorName" dataSort>
+            <TableHeaderColumn dataField="authorName">
               <span className="fs-sm">Author</span>
             </TableHeaderColumn>
 
@@ -143,7 +209,7 @@ class BlogsListTable extends Component {
             <TableHeaderColumn
               isKey
               dataField="id"
-              dataFormat={this.actionFormatter.bind(this)}
+              dataFormat={this.actionFormatter}
             >
               <span className="fs-sm">Actions</span>
             </TableHeaderColumn>
@@ -152,7 +218,7 @@ class BlogsListTable extends Component {
 
         <Modal
           size="sm"
-          isOpen={this.props.modalOpen}
+          isOpen={this.state.modalOpen}
           toggle={() => this.closeModal()}
         >
           <ModalHeader toggle={() => this.closeModal()}>
@@ -175,22 +241,4 @@ class BlogsListTable extends Component {
   }
 }
 
-function mapStateToProps(store) {
-  return {
-    loading: store.blogs.list.loading,
-    rows: store.blogs.list.rows,
-    modalOpen: store.blogs.list.modalOpen,
-    idToDelete: store.blogs.list.idToDelete,
-  };
-}
-
-export async function getServerSideProps(context) {
-  // const res = await axios.get("/blogs");
-  // const blogs = res.data.rows;
-
-  return {
-    props: {  }, // will be passed to the page component as props
-  };
-}
-
-export default connect(mapStateToProps)(withRouter(BlogsListTable));
+export default withRouter(BlogsListTable);

@@ -3,6 +3,7 @@ package com.example.moceramicshop.controllers;
 import com.example.moceramicshop.dtos.request.shipment.ShipmentRequestDTO;
 import com.example.moceramicshop.dtos.response.shipment.ShipmentResponseDTO;
 import com.example.moceramicshop.security.CustomUserDetails;
+import com.example.moceramicshop.security.PermissionGuard;
 import com.example.moceramicshop.services.ShipmentService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -30,20 +31,26 @@ import java.util.Set;
 public class ShipmentController {
 
     private final ShipmentService shipmentService;
+    private final PermissionGuard permissionGuard;
 
-    public ShipmentController(ShipmentService shipmentService) {
+    public ShipmentController(ShipmentService shipmentService, PermissionGuard permissionGuard) {
         this.shipmentService = shipmentService;
+        this.permissionGuard = permissionGuard;
     }
 
     private static final Set<String> SORTABLE_FIELDS = Set.of("status", "carrier", "createdAt", "updatedAt");
 
     @PostMapping
-    public ResponseEntity<ShipmentResponseDTO> create(@Valid @RequestBody ShipmentRequestDTO dto) {
+    public ResponseEntity<ShipmentResponseDTO> create(@Valid @RequestBody ShipmentRequestDTO dto,
+                                                        @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "shipments");
         return ResponseEntity.status(HttpStatus.CREATED).body(shipmentService.create(dto));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ShipmentResponseDTO> update(@PathVariable Long id, @Valid @RequestBody ShipmentRequestDTO dto) {
+    public ResponseEntity<ShipmentResponseDTO> update(@PathVariable Long id, @Valid @RequestBody ShipmentRequestDTO dto,
+                                                        @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "shipments");
         return ResponseEntity.ok(shipmentService.update(id, dto));
     }
 
@@ -54,7 +61,9 @@ public class ShipmentController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "shipments");
         String field = SORTABLE_FIELDS.contains(sortBy) ? sortBy : "createdAt";
         Sort sort = "asc".equalsIgnoreCase(sortDir) ? Sort.by(field).ascending() : Sort.by(field).descending();
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), sort);
@@ -68,7 +77,8 @@ public class ShipmentController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "shipments");
         shipmentService.delete(id);
         return ResponseEntity.noContent().build();
     }

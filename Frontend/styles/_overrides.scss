@@ -934,8 +934,25 @@ input::placeholder {
 select.form-control {
   background: url("../public/images/e-commerce/chevron-down.svg") no-repeat right;
   -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
   background-position: calc(100% - 15px);
   background-color: $white;
+  color: $gray-800;
+  font-weight: $font-weight-semi-bold;
+  text-shadow: 0 0 0 currentColor;
+  // The base .form-control rule sets padding: 14px 24px with a fixed
+  // height: 40px, which leaves less room than the text's own line-height
+  // needs (14px top + 14px bottom + ~21px line-height > 40px). <input>
+  // hides this by vertically centering overflow, but <select> clips it
+  // literally, cropping the tops/bottoms of the letters. Cut vertical
+  // padding down so the line-height actually fits inside the 40px box,
+  // and widen the right padding so text never runs under the arrow icon.
+  padding: 8px 42px 8px 15px;
+
+  &::-ms-expand {
+    display: none;
+  }
 }
 
 .dropdown-menu {

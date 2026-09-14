@@ -128,6 +128,9 @@ class Sidebar extends React.Component {
                     {
                       header: 'Account', link: '/account',
                     },
+                    {
+                      header: 'Change Password', link: '/change-password',
+                    },
                   ]}
               />
               <LinksGroup
@@ -151,9 +154,20 @@ class Sidebar extends React.Component {
               />
             </ul>
             <div className={s.accountBtn}>
-              <Link href={"/account  "}>
-                My Account
-              </Link>
+              {this.props.currentUser ? (
+                <>
+                  <Link href={"/account"}>
+                    My Account
+                  </Link>
+                  <a onClick={this.doLogout} style={{ marginLeft: "auto", marginRight: 32, cursor: "pointer" }}>
+                    Logout
+                  </a>
+                </>
+              ) : (
+                <Link href={"/login"}>
+                  Login
+                </Link>
+              )}
             </div>
           </nav>
         </div>

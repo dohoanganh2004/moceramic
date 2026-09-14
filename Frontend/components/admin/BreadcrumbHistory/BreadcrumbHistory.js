@@ -20,9 +20,8 @@ const BreadcrumbHistory = ({ url, key }) => {
           axios.get(`/products/${id}`).then((res) => {
             setRoute([
               "Products",
-              res.data.categories[0].id + '__' +
-                res.data.categories[0].title,
-              res.data.title,
+              res.data.categoryId + '__' + res.data.categoryName,
+              res.data.name,
             ]);
           }).catch(e => console.log(e));
         }
@@ -32,7 +31,7 @@ const BreadcrumbHistory = ({ url, key }) => {
         }
         const newUrl = url
           .split("/")
-          .slice(1)
+          .filter(Boolean)
           .map((route, index) => {
             if (router.pathname.includes("category") && index === 1) {
               return categoryName ? (categoryName[0].toUpperCase() + categoryName.slice(1)) : 'furniture';
@@ -67,7 +66,7 @@ const BreadcrumbHistory = ({ url, key }) => {
                 {length === index + 1 ? (
                     item
                 ) : (
-                    <Link href={middlewareUrl}>{item}</Link>
+                    <Link href={middlewareUrl}><a>{item}</a></Link>
                 )}
               </BreadcrumbItem>
             }

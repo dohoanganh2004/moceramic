@@ -3,6 +3,7 @@ import config from "constants/config";
 import jwt from "jsonwebtoken";
 import { toast } from "react-toastify";
 import Errors from "components/admin/FormItems/error/errors";
+import getErrorMessage from "utils/getErrorMessage";
 import Router from 'next/router';
 
 export const AUTH_FAILURE = "AUTH_FAILURE";
@@ -27,17 +28,8 @@ function decodeUser(token) {
     email: data.email,
     fullName: data.fullName,
     role: data["role-name"],
+    permissions: data.permissions || [],
   };
-}
-
-function extractErrorMessage(err, fallback) {
-  const data = err.response && err.response.data;
-  if (!data) return fallback;
-  if (data.fieldErrors) {
-    const first = Object.values(data.fieldErrors)[0];
-    if (first) return first;
-  }
-  return data.message || fallback;
 }
 
 export function authError(payload) {
@@ -111,11 +103,9 @@ export function receiveToken(token, refreshToken) {
     dispatch({
       type: LOGIN_SUCCESS,
     });
-    // Note: admin/* pages use getServerSideProps + a localStorage-based auth check,
-    // which always sees a logged-out user on the server-rendered pass (a pre-existing
-    // template issue, unrelated to the backend). Land on the storefront home for now;
-    // admin users can navigate into /admin from there once that's addressed separately.
-    if (typeof window !== 'undefined') { window.location.href = "/" }
+    if (typeof window !== 'undefined') {
+      window.location.href = user && user.role && user.role !== "customer" ? "/admin/dashboard" : "/home";
+    }
   };
 }
 
@@ -135,7 +125,7 @@ export function loginUser(creds) {
           dispatch(doInit());
         })
         .catch((err) => {
-          const message = extractErrorMessage(err, "Đăng nhập thất bại");
+          const message = getErrorMessage(err, "Đăng nhập thất bại");
           dispatch(authError(message));
           toast.error(message);
         });
@@ -147,7 +137,6 @@ export function loginUser(creds) {
 
 export function verifyEmail(token) {
   return (dispatch) => {
-    console.log(token, 'TIOKEN')
     axios
       .put("/auth/verify-email", { token })
       .then((verified) => {
@@ -156,7 +145,7 @@ export function verifyEmail(token) {
         }
       })
       .catch((err) => {
-        toast.error(err.response.data);
+        toast.error(getErrorMessage(err, "Could not verify your email"));
       })
       .finally(() => {
          if (typeof window !== 'undefined') { window.location.href = "/login" }
@@ -179,7 +168,9 @@ export function resetPassword(token, password) {
          if (typeof window !== 'undefined') { window.location.href = "/login" }
       })
       .catch((err) => {
-        dispatch(authError(err.response.data));
+        const message = getErrorMessage(err, "Could not reset your password");
+        dispatch(authError(message));
+        toast.error(message);
       });
   };
 }
@@ -199,7 +190,9 @@ export function sendPasswordResetEmail(email) {
          if (typeof window !== 'undefined') { window.location.href = "/login" }
       })
       .catch((err) => {
-        dispatch(authError(err.response.data));
+        const message = getErrorMessage(err, "Could not send the reset email");
+        dispatch(authError(message));
+        toast.error(message);
       });
   };
 }
@@ -227,7 +220,7 @@ export function registerUser(creds) {
           if (typeof window !== 'undefined') { window.location.href = "/login" }
         })
         .catch((err) => {
-          const message = extractErrorMessage(err, "Đăng ký thất bại");
+          const message = getErrorMessage(err, "Đăng ký thất bại");
           dispatch(authError(message));
           toast.error(message);
         });

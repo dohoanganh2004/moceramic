@@ -27,9 +27,9 @@ class BlogsView extends Component {
 
     return (
       <Widget title={<h4>{record.title}</h4>} collapse close>
-        <Table borderless size="sm">
+        <Table borderless size="sm" style={{ tableLayout: "fixed", width: "100%" }}>
           <tbody>
-            <tr><td className="fw-bold">Slug</td><td>{record.slug}</td></tr>
+            <tr><td className="fw-bold" style={{ width: 140 }}>Slug</td><td>{record.slug}</td></tr>
             <tr><td className="fw-bold">Author</td><td>{record.authorName}</td></tr>
             <tr><td className="fw-bold">Status</td><td>{record.status}</td></tr>
             <tr><td className="fw-bold">Published At</td><td>{record.publishedAt ? record.publishedAt.toString().slice(0, 19).replace("T", " ") : "-"}</td></tr>

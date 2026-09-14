@@ -10,15 +10,18 @@ import InfoBlock from 'components/e-commerce/InfoBlock';
 import filter from "public/images/e-commerce/filter.svg";
 import relevant from "public/images/e-commerce/relevant.svg";
 import axios from "axios";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import Head from "next/head";
 import InstagramWidget from 'components/e-commerce/Instagram';
 import arrowRight from "../../public/images/e-commerce/home/arrow-right.svg";
 import rating from "../../public/images/e-commerce/details/stars.svg";
 import productsListActions from "../../redux/actions/products/productsListActions";
+import useWishlist from "hooks/useWishlist";
+import { emitCartUpdated } from "utils/cartEvents";
+import resolveAssetUrl from "utils/resolveAssetUrl";
+import { formatVND } from "utils/formatCurrency";
 
-let categoriesList = [],
-  brandsList = [];
+let categoriesList = [];
 
 const Index = () => {
   const [quantity, setQuantity] = React.useState(1);
@@ -88,6 +91,7 @@ const Index = () => {
   const [products, setProducts] = React.useState([]);
   const [showFilter, setShowFilter] = React.useState(false);
   const [allProducts, setAllProducts] = React.useState([]);
+  const [categories, setCategories] = React.useState([]);
   const [openState, dispatch] = React.useReducer(openReducer, {
     open0: false,
     open1: false,
@@ -100,6 +104,7 @@ const Index = () => {
     open8: false,
   });
   const currentUser = useSelector((store) => store.auth.currentUser);
+  const { wishlistIds, toggleWishlist } = useWishlist(currentUser);
   React.useEffect(() => {
     window.addEventListener("resize", () => {
       setWidth(window.innerWidth);
@@ -108,6 +113,7 @@ const Index = () => {
       setAllProducts(res.data);
       setProducts([...res.data]);
     });
+    axios.get("/categories").then((res) => setCategories(res.data || [])).catch(() => setCategories([]));
   }, []);
 
   const addToCart = (product, quantity = 1) => {
@@ -123,7 +129,8 @@ const Index = () => {
     }
     axios
       .post(`/cart/items`, { variantId, quantity })
-      .then(() => {
+      .then((res) => {
+        emitCartUpdated(res.data.totalItems);
         toast.info("Product successfully added to your cart");
       })
       .catch(() => {
@@ -131,55 +138,45 @@ const Index = () => {
       });
   };
 
-  const addToWishlist = (productId) => {
+  const buyNow = (product, quantity = 1) => {
     if (!currentUser) {
-      toast.info("Please log in to add items to your wishlist");
+      toast.info("Please log in to buy this item");
       if (typeof window !== "undefined") { window.location.href = "/login"; }
       return;
     }
-    axios
-      .post(`/wishlist`, { productId })
-      .then(() => {
-        toast.info("Product successfully added to your wishlist");
-      })
-      .catch(() => {
-        toast.error("Could not add this item to your wishlist");
-      });
+    const variant = product && product.variants && product.variants[0];
+    if (!variant) {
+      toast.error("This product is not available for purchase right now");
+      return;
+    }
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("buyNowItem", JSON.stringify({
+        productId: product.id,
+        productName: product.name,
+        imageUrl: resolveAssetUrl(product.images?.[0]?.imageUrl),
+        variantId: variant.id,
+        variantSnapshot: [variant.colorGlaze, variant.size].filter(Boolean).join(' / '),
+        unitPrice: variant.price || product.basePrice || 0,
+        quantity,
+      }));
+      window.location.href = "/order";
+    }
   };
 
-  const filterByCategory = (category, brands) => {
-    let count = 0,
-      brandsCount = 0,
-      brandsString = "",
-      categoriesString = "";
-    if (brands) {
-      brandsList.push(category);
-      brandsList.forEach((item) => {
-        if (item === category) brandsCount += 1;
-      });
-      brandsList = brandsList.filter((item) => {
-        if (brandsList.length === 1) {
-          return true;
-        }
-        if (brandsCount === 1 && item === category) return true;
-        return item !== category;
-      });
-      brandsString = brandsList.join("|");
-    } else {
-      categoriesList.push(category);
-      categoriesList.forEach((item) => {
-        if (item === category) count += 1;
-      });
-      categoriesList = categoriesList.filter((item) => {
-        if (categoriesList.length === 1) {
-          return true;
-        }
-        if (count === 1 && item === category) return true;
-        return item !== category;
-      });
-      categoriesString = categoriesList.join("|");
-    }
-    // Category/brand filtering by query string isn't supported by the API - filter
+  const filterByCategory = (category) => {
+    let count = 0;
+    categoriesList.push(category);
+    categoriesList.forEach((item) => {
+      if (item === category) count += 1;
+    });
+    categoriesList = categoriesList.filter((item) => {
+      if (categoriesList.length === 1) {
+        return true;
+      }
+      if (count === 1 && item === category) return true;
+      return item !== category;
+    });
+    // Category filtering by query string isn't supported by the API - filter
     // the already-fetched product list client-side instead.
     if (categoriesList.length === 0) {
       setProducts([...allProducts]);
@@ -216,335 +213,44 @@ const Index = () => {
       </Head>
       <Container className={"mb-5"} style={{ marginTop: 32 }}>
         <Row>
-          <ToastContainer />
           <Col sm={3} className={`${s.filterColumn} ${showFilter ? s.showFilter : ''}`}>
             <div className={s.filterTitle}><h5 className={"fw-bold mb-5 text-uppercase"}>Categories</h5><span onClick={() => setShowFilter(false)}>✕</span></div>
-            <div className={"d-flex align-items-center"}>
-              <Checkbox
-                borderColor={"#232323"}
-                borderWidth={1}
-                borderRadius={2}
-                icon={
-                  <div
-                    style={{
-                      backgroundColor: "#bd744c",
-                      borderRadius: 2,
-                      padding: 4,
-                    }}
+            {categories.length === 0 ? (
+              <p className={"text-muted"}>No categories yet.</p>
+            ) : (
+              categories.map((cat, i) => (
+                <div className={`d-flex align-items-center ${i > 0 ? "mt-2" : ""}`} key={cat.id}>
+                  <Checkbox
+                    borderColor={"#232323"}
+                    borderWidth={1}
+                    borderRadius={2}
+                    icon={
+                      <div
+                        style={{
+                          backgroundColor: "#bd744c",
+                          borderRadius: 2,
+                          padding: 4,
+                        }}
+                      />
+                    }
+                    size={16}
+                    label={<p className={"d-inline-block ml-1 mb-0"}>{cat.name}</p>}
+                    onChange={() => filterByCategory(String(cat.id))}
+                    style={{ marginTop: -1 }}
                   />
-                }
-                size={16}
-                label={
-                  <p className={"d-inline-block ml-1 mb-0"}>Furniture</p>
-                }
-                onChange={() =>
-                  filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc711")
-                }
-                style={{marginTop: -1}}
-              />
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <Checkbox
-                  borderColor={"#232323"}
-                  borderWidth={1}
-                  borderRadius={2}
-                  icon={
-                    <div
-                        style={{
-                          backgroundColor: "#bd744c",
-                          borderRadius: 2,
-                          padding: 4,
-                        }}
-                    />
-                  }
-                  size={16}
-                  label={
-                    <p className={"d-inline-block ml-1 mb-0"}>Lighting</p>
-                  }
-                  onChange={() =>
-                      filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc712")
-                  }
-                  style={{marginTop: -1}}
-              />
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <Checkbox
-                  borderColor={"#232323"}
-                  borderWidth={1}
-                  borderRadius={2}
-                  icon={
-                    <div
-                        style={{
-                          backgroundColor: "#bd744c",
-                          borderRadius: 2,
-                          padding: 4,
-                        }}
-                    />
-                  }
-                  size={16}
-                  label={
-                    <p className={"d-inline-block ml-1 mb-0"}>Decoration</p>
-                  }
-                  onChange={() =>
-                      filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc713")
-                  }
-                  style={{marginTop: -1}}
-              />
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <Checkbox
-                  borderColor={"#232323"}
-                  borderWidth={1}
-                  borderRadius={2}
-                  icon={
-                    <div
-                        style={{
-                          backgroundColor: "#bd744c",
-                          borderRadius: 2,
-                          padding: 4,
-                        }}
-                    />
-                  }
-                  size={16}
-                  label={
-                    <p className={"d-inline-block ml-1 mb-0"}>Bedding</p>
-                  }
-                  onChange={() =>
-                      filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc714")
-                  }
-                  style={{marginTop: -1}}
-              />
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <Checkbox
-                  borderColor={"#232323"}
-                  borderWidth={1}
-                  borderRadius={2}
-                  icon={
-                    <div
-                        style={{
-                          backgroundColor: "#bd744c",
-                          borderRadius: 2,
-                          padding: 4,
-                        }}
-                    />
-                  }
-                  size={16}
-                  label={
-                    <p className={"d-inline-block ml-1 mb-0"}>Bath & Shower</p>
-                  }
-                  onChange={() =>
-                      filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc715")
-                  }
-                  style={{marginTop: -1}}
-              />
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <Checkbox
-                  borderColor={"#232323"}
-                  borderWidth={1}
-                  borderRadius={2}
-                  icon={
-                    <div
-                        style={{
-                          backgroundColor: "#bd744c",
-                          borderRadius: 2,
-                          padding: 4,
-                        }}
-                    />
-                  }
-                  size={16}
-                  label={
-                    <p className={"d-inline-block ml-1 mb-0"}>Curtains</p>
-                  }
-                  onChange={() =>
-                      filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc716")
-                  }
-                  style={{marginTop: -1}}
-              />
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <Checkbox
-                  borderColor={"#232323"}
-                  borderWidth={1}
-                  borderRadius={2}
-                  icon={
-                    <div
-                        style={{
-                          backgroundColor: "#bd744c",
-                          borderRadius: 2,
-                          padding: 4,
-                        }}
-                    />
-                  }
-                  size={16}
-                  label={
-                    <p className={"d-inline-block ml-1 mb-0"}>Toys</p>
-                  }
-                  onChange={() =>
-                      filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc717")
-                  }
-                  style={{marginTop: -1}}
-              />
-            </div>
+                </div>
+              ))
+            )}
             <h5 className={"fw-bold mb-5 mt-5 text-uppercase"}>Price</h5>
-            <p>Price Range: $0 - $1500</p>
+            <p>Price Range: {formatVND(0)} - {formatVND(1500)}</p>
             <InputRange
               maxValue={1500}
               minValue={0}
-              formatLabel={(rangeValue) => `${rangeValue} $`}
+              formatLabel={(rangeValue) => formatVND(rangeValue)}
               value={rangeValue}
               onChange={(value) => setRangeValue(value)}
             />
 
-            <h5 className={"fw-bold mb-5 mt-5 text-uppercase"}>Brands</h5>
-            <div className={"d-flex align-items-center"}>
-              <Checkbox
-                  borderColor={"#232323"}
-                  borderWidth={1}
-                  borderRadius={2}
-                  icon={
-                    <div
-                        style={{
-                          backgroundColor: "#bd744c",
-                          borderRadius: 2,
-                          padding: 4,
-                        }}
-                    />
-                  }
-                  size={16}
-                  label={
-                    <p className={"d-inline-block ml-1 mb-0"}>Poliform</p>
-                  }
-                  onChange={() =>
-                      filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc721", true)
-                  }
-                  style={{marginTop: -1}}
-              />
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <Checkbox
-                  borderColor={"#232323"}
-                  borderWidth={1}
-                  borderRadius={2}
-                  icon={
-                    <div
-                        style={{
-                          backgroundColor: "#bd744c",
-                          borderRadius: 2,
-                          padding: 4,
-                        }}
-                    />
-                  }
-                  size={16}
-                  label={
-                    <p className={"d-inline-block ml-1 mb-0"}>Roche Bobois</p>
-                  }
-                  onChange={() =>
-                      filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc722", true)
-                  }
-                  style={{marginTop: -1}}
-              />
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <Checkbox
-                  borderColor={"#232323"}
-                  borderWidth={1}
-                  borderRadius={2}
-                  icon={
-                    <div
-                        style={{
-                          backgroundColor: "#bd744c",
-                          borderRadius: 2,
-                          padding: 4,
-                        }}
-                    />
-                  }
-                  size={16}
-                  label={
-                    <p className={"d-inline-block ml-1 mb-0"}>Edra</p>
-                  }
-                  onChange={() =>
-                      filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc723", true)
-                  }
-                  style={{marginTop: -1}}
-              />
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <Checkbox
-                  borderColor={"#232323"}
-                  borderWidth={1}
-                  borderRadius={2}
-                  icon={
-                    <div
-                        style={{
-                          backgroundColor: "#bd744c",
-                          borderRadius: 2,
-                          padding: 4,
-                        }}
-                    />
-                  }
-                  size={16}
-                  label={
-                    <p className={"d-inline-block ml-1 mb-0"}>Kartell</p>
-                  }
-                  onChange={() =>
-                      filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc724", true)
-                  }
-                  style={{marginTop: -1}}
-              />
-            </div>
-            <h5 className={"fw-bold mb-5 mt-5 text-uppercase"}>
-              Availability
-            </h5>
-            <div className={"d-flex align-items-center"}>
-              <Checkbox
-                  borderColor={"#232323"}
-                  borderWidth={1}
-                  borderRadius={2}
-                  icon={
-                    <div
-                        style={{
-                          backgroundColor: "#bd744c",
-                          borderRadius: 2,
-                          padding: 4,
-                        }}
-                    />
-                  }
-                  size={16}
-                  label={
-                    <p className={"d-inline-block ml-1 mb-0"}>On Stock</p>
-                  }
-                  onChange={() =>
-                      filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc724", true)
-                  }
-                  style={{marginTop: -1}}
-              />
-            </div>
-            <div className={"d-flex align-items-center mt-2"}>
-              <Checkbox
-                  borderColor={"#232323"}
-                  borderWidth={1}
-                  borderRadius={2}
-                  icon={
-                    <div
-                        style={{
-                          backgroundColor: "#bd744c",
-                          borderRadius: 2,
-                          padding: 4,
-                        }}
-                    />
-                  }
-                  size={16}
-                  label={
-                    <p className={"d-inline-block ml-1 mb-0"}>Out of Stock</p>
-                  }
-                  onChange={() =>
-                      filterByCategory("1fcb7ece-6373-405d-92ef-3f3c4e7dc723", true)
-                  }
-                  style={{marginTop: -1}}
-              />
-            </div>
           </Col>
           <Col sm={width <= 768 ? 12 : 9}>
             {!(width <= 768) ? (
@@ -557,7 +263,7 @@ const Index = () => {
                   <span className={"fw-bold text-primary"}>
                     {products.length}
                   </span>{" "}
-                  of <span className={"fw-bold text-primary"}>15</span> Products
+                  of <span className={"fw-bold text-primary"}>{allProducts.length}</span> Products
                 </h6>
                 <div className={"d-flex align-items-center"}>
                   <h6 className={"text-nowrap mr-3 mb-0"}>Sort by:</h6>
@@ -599,7 +305,7 @@ const Index = () => {
                     <div className={s.modalWidndow}>
                       <div className={s.image}>
                         <img
-                          src={item.images?.[0]?.imageUrl}
+                          src={resolveAssetUrl(item.images?.[0]?.imageUrl)}
                           width={"100%"}
                           height={"100%"}
                         />
@@ -674,7 +380,7 @@ const Index = () => {
                             <h6 className={"fw-bold text-muted text-uppercase"}>
                               Price
                             </h6>
-                            <h6 className={"fw-bold"}>{item.basePrice}$</h6>
+                            <h6 className={"fw-bold"}>{formatVND(item.basePrice)}</h6>
                           </div>
                         </div>
                         <div className={"d-flex mt-5"}>
@@ -689,18 +395,16 @@ const Index = () => {
                           >
                             Add to Cart
                           </Button>
-                          <Link
-                            href={"/billing"}
-                            className={"d-inline-block flex-fill"}
+                          <Button
+                            color={"primary"}
+                            className={"flex-fill text-uppercase fw-bold"}
+                            style={{ width: "50%" }}
+                            onClick={() => {
+                              buyNow(item, quantity);
+                            }}
                           >
-                            <Button
-                              color={"primary"}
-                              className={"text-uppercase fw-bold"}
-                              style={{ width: "50%" }}
-                            >
-                              Buy now
-                            </Button>
-                          </Link>
+                            Buy now
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -710,7 +414,7 @@ const Index = () => {
                       <a>
                         <div
                           style={{
-                            backgroundImage: `url(${item.images?.[0]?.imageUrl})`
+                            backgroundImage: `url(${resolveAssetUrl(item.images?.[0]?.imageUrl)})`
                           }}
                           className={s.productImage}
                         />
@@ -728,10 +432,14 @@ const Index = () => {
                       <Button
                         className={"p-0 bg-transparent border-0"}
                         onClick={() => {
-                          addToWishlist(item.id);
+                          toggleWishlist(item.id);
                         }}
                       >
-                        <div className={`mb-4 ${s.product__actions__heart}`} />
+                        <div
+                          className={`mb-4 ${s.product__actions__heart} ${
+                            wishlistIds.has(item.id) ? s.product__actions__heart_active : ""
+                          }`}
+                        />
                       </Button>
                       <Button
                         className={"p-0 bg-transparent border-0"}
@@ -768,7 +476,7 @@ const Index = () => {
                           </h6>
                         </a>
                       </Link>
-                      <h6 style={{ fontSize: 16 }}>${item.basePrice}</h6>
+                      <h6 style={{ fontSize: 16 }}>{formatVND(item.basePrice)}</h6>
                     </div>
                   </div>
                 </Col>

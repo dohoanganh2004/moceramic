@@ -20,6 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.List;
@@ -32,9 +33,11 @@ public class UserServiceImp implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final AuthService authService;
     private final UserMapper userMapper;
+    private final FileStorageService fileStorageService;
 
     public UserServiceImp(UserRepository userRepository, RoleRepository roleRepository, PasswordEncoder passwordEncoder,
-                           AuthService authService, UserMapper userMapper) {
+                           AuthService authService, UserMapper userMapper, FileStorageService fileStorageService) {
+        this.fileStorageService = fileStorageService;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
@@ -147,6 +150,24 @@ public class UserServiceImp implements UserService {
 
         User savedUser = userRepository.saveAndFlush(user);
         log.info("Updated profile for userId={}", currentUserId);
+        return userMapper.toUserResponseDTO(userRepository.findWithRoleById(savedUser.getId()).orElseThrow());
+    }
+
+    @Override
+    public UserResponseDTO updateAvatar(Long currentUserId, MultipartFile file) {
+        User user = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user với id " + currentUserId));
+
+        String oldAvatarUrl = user.getAvatarUrl();
+        String newAvatarUrl = fileStorageService.store(file);
+        user.setAvatarUrl(newAvatarUrl);
+        user.setUpdatedAt(Instant.now());
+
+        User savedUser = userRepository.saveAndFlush(user);
+        if (oldAvatarUrl != null && !oldAvatarUrl.equals(newAvatarUrl)) {
+            fileStorageService.delete(oldAvatarUrl);
+        }
+        log.info("Updated avatar for userId={}", currentUserId);
         return userMapper.toUserResponseDTO(userRepository.findWithRoleById(savedUser.getId()).orElseThrow());
     }
 

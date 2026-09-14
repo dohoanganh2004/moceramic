@@ -1,0 +1,113 @@
+@import "styles/app";
+
+.tracker {
+  display: flex;
+  align-items: flex-start;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 32px 16px 20px;
+  overflow-x: auto;
+}
+
+.step {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.stepLine {
+  position: absolute;
+  top: 15px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: #d9d9d9;
+}
+
+.step:first-child .stepLine {
+  display: none;
+}
+
+.step.done .stepLine {
+  background: $primary;
+}
+
+.stepCircle {
+  position: relative;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #d9d9d9;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.step.done .stepCircle {
+  background: $primary;
+}
+
+.step.current .stepCircle {
+  box-shadow: 0 0 0 4px rgba($primary, 0.2);
+}
+
+.stepLabel {
+  margin-top: 10px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #999;
+  padding: 0 4px;
+}
+
+.step.done .stepLabel {
+  color: #333;
+}
+
+.stepDate {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #999;
+}
+
+.cancelledBanner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #fff5f5;
+  border: 1px solid #ffd7d7;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.cancelledIcon {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 50%;
+  background: #e74c3c;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.infoCard {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
+
+  > div {
+    padding: 4px 0;
+  }
+}

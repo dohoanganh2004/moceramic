@@ -13,6 +13,7 @@ import FilesFormItem from "components/admin/FormItems/items/FilesFormItem";
 import TextAreaFormItem from "components/admin/FormItems/items/TextAreaFormItem";
 
 import categoriesFields from "components/admin/CRUD/Categories/categoriesFields";
+import slugify from "utils/slugify";
 import IniValues from "components/admin/FormItems/iniValues";
 import PreparedValues from "components/admin/FormItems/preparedValues";
 import FormValidations from "components/admin/FormItems/formValidations";
@@ -56,9 +57,14 @@ class CategoriesForm extends Component {
                   name={"name"}
                   schema={categoriesFields}
                   autoFocus
+                  onValueChange={(value, formInstance) => {
+                    if (!formInstance.touched.slug) {
+                      formInstance.setFieldValue("slug", slugify(value));
+                    }
+                  }}
                 />
 
-                <InputFormItem name={"slug"} schema={categoriesFields} />
+                <InputFormItem name={"slug"} schema={categoriesFields} hint="Tự tạo từ tên danh mục, có thể sửa lại nếu cần." />
 
                 <TextAreaFormItem name={"description"} schema={categoriesFields} />
 

@@ -17,11 +17,56 @@ import DownloadIcon from "public/images/e-commerce/sidebar/download";
 import BarIcon from "public/images/e-commerce/sidebar/bar";
 import FileIcon from "public/images/e-commerce/sidebar/file";
 import GiftIcon from "public/images/e-commerce/sidebar/gift";
-import GridIcon from "public/images/e-commerce/sidebar/grid";
 import PersonIcon from "public/images/e-commerce/sidebar/person";
 import PricetagIcon from "public/images/e-commerce/sidebar/pricetag";
 import SettingsIcon from "public/images/e-commerce/sidebar/settings";
 import ShoppingIcon from "public/images/e-commerce/sidebar/shopping";
+
+// Staff/admin sections. Which ones a given user sees is driven by the
+// `permissions` codes embedded in their JWT (managed by an admin at
+// /admin/permissions) rather than a hard-coded role check, so changing a
+// role's permissions there takes effect without a frontend deploy. "customer"
+// is handled separately below since customers get their own storefront-facing
+// links instead of any of these back-office sections.
+const STAFF_NAV_ITEMS = [
+  { header: "Orders", link: "/admin/orders", icon: DownloadIcon, code: "orders" },
+  { header: "Shipments", link: "/admin/shipments", icon: ShoppingIcon, code: "shipments" },
+  { header: "Custom Orders", link: "/admin/custom-orders", icon: GiftIcon, code: "custom_orders" },
+  { header: "Payments", link: "/admin/payments", icon: PricetagIcon, code: "payments" },
+  { header: "Vouchers", link: "/admin/vouchers", icon: DownloadIcon, code: "vouchers" },
+  { header: "Products", link: "/admin/products", icon: PricetagIcon, code: "products" },
+  { header: "Categories", link: "/admin/categories", icon: BarIcon, code: "categories" },
+  { header: "Blog", link: "/admin/blogs", icon: DownloadIcon, code: "blog" },
+  { header: "Static Pages", link: "/admin/static-pages", icon: DownloadIcon, code: "static_pages" },
+  { header: "Contact Messages", link: "/admin/contact-messages", icon: FileIcon, code: "contact_messages" },
+  { header: "Newsletter", link: "/admin/newsletter", icon: PersonIcon, code: "newsletter" },
+  { header: "Feedback", link: "/admin/feedback", icon: DownloadIcon, code: "feedback" },
+  { header: "Users", link: "/admin/users", icon: PersonIcon, code: "users" },
+];
+
+const CUSTOMER_NAV_ITEMS = [
+  { header: "Shop", link: "/shop", icon: ShoppingIcon },
+  { header: "Blog", link: "/blog", icon: FileIcon },
+  { header: "Cart", link: "/cart", icon: PricetagIcon },
+  { header: "My Orders", link: "/order/my-order", icon: DownloadIcon },
+  { header: "Wishlist", link: "/wishlist", icon: GiftIcon },
+];
+
+// Guests (not logged in) get the same persistent sidebar too, scoped to the
+// links they can actually use without an account.
+const GUEST_NAV_ITEMS = [
+  { header: "Shop", link: "/shop", icon: ShoppingIcon },
+  { header: "Blog", link: "/blog", icon: FileIcon },
+  { header: "Cart", link: "/cart", icon: PricetagIcon },
+  { header: "Login", link: "/login", icon: PersonIcon },
+];
+
+// Sub-items under the collapsible "My Account" group, for every logged-in role.
+const MY_ACCOUNT_CHILDREN = [
+  { header: "Profile", link: "/my-profile", index: "my-account/profile" },
+  { header: "Address", link: "/account", index: "my-account/address" },
+  { header: "Change Password", link: "/change-password", index: "my-account/password" },
+];
 
 class Sidebar extends React.Component {
   static propTypes = {
@@ -68,7 +113,28 @@ class Sidebar extends React.Component {
     this.props.dispatch(logoutUser());
   }
 
+  renderLink = ({ header, link, icon: Icon }) => (
+    <LinksGroup
+      key={header}
+      onActiveSidebarItemChange={(activeItem) =>
+        this.props.dispatch(changeActiveSidebarItem(activeItem))
+      }
+      activeItem={this.props.activeItem}
+      header={header}
+      link={link}
+      isHeader
+      iconType="node"
+      iconName={<Icon />}
+    />
+  );
+
   render() {
+    const { currentUser } = this.props;
+    const role = currentUser && currentUser.role;
+    const isCustomer = role === "customer";
+    const isAdmin = role === "admin";
+    const permissions = (currentUser && currentUser.permissions) || [];
+
     return (
       <div
         className={`${
@@ -94,170 +160,49 @@ class Sidebar extends React.Component {
                 }
                 activeItem={this.props.activeItem}
                 header="Home"
-                link={`${this.props.currentUser ? '/admin/dashboard' : '/'}`}
+                link={`${!currentUser ? '/' : isCustomer ? '/home' : '/admin/dashboard'}`}
                 isHeader
                 iconType="node"
                 iconName={<HomeIcon />}
             />
 
-            {this.props.currentUser &&
-            this.props.currentUser.role === "admin" && (
-                <LinksGroup
-                    onActiveSidebarItemChange={(activeItem) =>
-                        this.props.dispatch(changeActiveSidebarItem(activeItem))
-                    }
-                    activeItem={this.props.activeItem}
-                    header="Orders"
-                    link="/admin/orders"
-                    isHeader
-                    iconType="node"
-                    iconName={<DownloadIcon />}
-                />
-            )}
+            {!currentUser && GUEST_NAV_ITEMS.map(this.renderLink)}
 
-            {this.props.currentUser &&
-            this.props.currentUser.role === "admin" && (
-                <LinksGroup
-                    onActiveSidebarItemChange={(activeItem) =>
-                        this.props.dispatch(changeActiveSidebarItem(activeItem))
-                    }
-                    activeItem={this.props.activeItem}
-                    header="Feedback"
-                    link="/admin/feedback"
-                    isHeader
-                    iconType="node"
-                    iconName={<DownloadIcon />}
-                />
-            )}
+            {currentUser && isCustomer &&
+              CUSTOMER_NAV_ITEMS.map(this.renderLink)}
 
-            {this.props.currentUser &&
-            this.props.currentUser.role === "admin" && (
-                <LinksGroup
-                    onActiveSidebarItemChange={(activeItem) =>
-                        this.props.dispatch(changeActiveSidebarItem(activeItem))
-                    }
-                    activeItem={this.props.activeItem}
-                    header="Blog"
-                    link="/admin/blogs"
-                    isHeader
-                    iconType="node"
-                    iconName={<DownloadIcon />}
-                />
-            )}
+            {currentUser && !isCustomer &&
+              STAFF_NAV_ITEMS.filter((item) => permissions.includes(item.code)).map(this.renderLink)}
 
-            {this.props.currentUser &&
-            this.props.currentUser.role === "admin" && (
-                <LinksGroup
-                    onActiveSidebarItemChange={(activeItem) =>
-                        this.props.dispatch(changeActiveSidebarItem(activeItem))
-                    }
-                    activeItem={this.props.activeItem}
-                    header="Static Pages"
-                    link="/admin/static-pages"
-                    isHeader
-                    iconType="node"
-                    iconName={<DownloadIcon />}
-                />
-            )}
-
-            {this.props.currentUser &&
-            this.props.currentUser.role === "admin" && (
-                <LinksGroup
-                    onActiveSidebarItemChange={(activeItem) =>
-                        this.props.dispatch(changeActiveSidebarItem(activeItem))
-                    }
-                    activeItem={this.props.activeItem}
-                    header="Products"
-                    link="/admin/products"
-                    isHeader
-                    iconType="node"
-                    iconName={<PricetagIcon />}
-                />
-            )}
-
-            {this.props.currentUser &&
-            this.props.currentUser.role === "admin" && (
-                <LinksGroup
-                    onActiveSidebarItemChange={(activeItem) =>
-                        this.props.dispatch(changeActiveSidebarItem(activeItem))
-                    }
-                    activeItem={this.props.activeItem}
-                    header="Users"
-                    link="/admin/users"
-                    isHeader
-                    iconType="node"
-                    iconName={<PersonIcon />}
-                />
-            )}
-
-            {this.props.currentUser &&
-            this.props.currentUser.role === "admin" && (
-                <LinksGroup
-                    onActiveSidebarItemChange={(activeItem) =>
-                        this.props.dispatch(changeActiveSidebarItem(activeItem))
-                    }
-                    activeItem={this.props.activeItem}
-                    header="Categories"
-                    link="/admin/categories"
-                    isHeader
-                    iconType="node"
-                    iconName={<BarIcon />}
-                />
-            )}
-            {this.props.currentUser && (
+            {currentUser && isAdmin && (
             <LinksGroup
                 onActiveSidebarItemChange={(activeItem) =>
                     this.props.dispatch(changeActiveSidebarItem(activeItem))
                 }
                 activeItem={this.props.activeItem}
-                header="My Profile"
-                link={`/admin/users/edit/${this.props.currentUser && this.props.currentUser.id}`}
-                isHeader
-                iconType="node"
-                iconName={<FileIcon />}
-            />
-            )}
-            {this.props.currentUser && (
-            <LinksGroup
-                onActiveSidebarItemChange={(activeItem) =>
-                    this.props.dispatch(changeActiveSidebarItem(activeItem))
-                }
-                activeItem={this.props.activeItem}
-                header="Change Password"
-                link="/admin/password"
+                header="Permissions"
+                link="/admin/permissions"
                 isHeader
                 iconType="node"
                 iconName={<SettingsIcon />}
             />
             )}
+
+            {currentUser && (
             <LinksGroup
                 onActiveSidebarItemChange={(activeItem) =>
                     this.props.dispatch(changeActiveSidebarItem(activeItem))
                 }
                 activeItem={this.props.activeItem}
-                header="Documentation"
-                link="/admin/documentation/overview"
+                header="My Account"
+                link="my-account"
+                index="my-account"
                 isHeader
                 iconType="node"
-                iconName={<GiftIcon />}
-                index="documentation"
-                labelColor="success"
-                target="_blank"
-                childrenLinks={[
-                  {
-                    header: 'Overview', link: '/admin/documentation/overview',
-                  },
-                  {
-                    header: 'Quick Start', link: '/admin/documentation/quick-start',
-                  },
-                  {
-                    header: 'What is inside', link: '/admin/documentation/whats-inside',
-                  },
-                  {
-                    header: 'Licences', link: '/admin/documentation/licences',
-                  },
-                ]}
+                iconName={<FileIcon />}
+                childrenLinks={MY_ACCOUNT_CHILDREN}
             />
+            )}
           </ul>
         </nav>
       </div>

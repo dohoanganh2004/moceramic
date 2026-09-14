@@ -2,6 +2,8 @@ package com.example.moceramicshop.controllers;
 
 import com.example.moceramicshop.dtos.request.contact.ContactMessageStatusUpdateRequestDTO;
 import com.example.moceramicshop.dtos.response.contact.ContactMessageResponseDTO;
+import com.example.moceramicshop.security.CustomUserDetails;
+import com.example.moceramicshop.security.PermissionGuard;
 import com.example.moceramicshop.services.ContactMessageService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -9,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -25,9 +28,11 @@ import java.util.Set;
 public class ContactMessageController {
 
     private final ContactMessageService contactMessageService;
+    private final PermissionGuard permissionGuard;
 
-    public ContactMessageController(ContactMessageService contactMessageService) {
+    public ContactMessageController(ContactMessageService contactMessageService, PermissionGuard permissionGuard) {
         this.contactMessageService = contactMessageService;
+        this.permissionGuard = permissionGuard;
     }
 
     private static final Set<String> SORTABLE_FIELDS = Set.of("name", "email", "status", "createdAt");
@@ -39,7 +44,9 @@ public class ContactMessageController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "contact_messages");
         String field = SORTABLE_FIELDS.contains(sortBy) ? sortBy : "createdAt";
         Sort sort = "asc".equalsIgnoreCase(sortDir) ? Sort.by(field).ascending() : Sort.by(field).descending();
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), sort);
@@ -47,18 +54,22 @@ public class ContactMessageController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ContactMessageResponseDTO> getById(@PathVariable Long id) {
+    public ResponseEntity<ContactMessageResponseDTO> getById(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "contact_messages");
         return ResponseEntity.ok(contactMessageService.getById(id));
     }
 
     @PatchMapping("/{id}/status")
     public ResponseEntity<ContactMessageResponseDTO> updateStatus(@PathVariable Long id,
-                                                                    @Valid @RequestBody ContactMessageStatusUpdateRequestDTO dto) {
+                                                                    @Valid @RequestBody ContactMessageStatusUpdateRequestDTO dto,
+                                                                    @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "contact_messages");
         return ResponseEntity.ok(contactMessageService.updateStatus(id, dto));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "contact_messages");
         contactMessageService.delete(id);
         return ResponseEntity.noContent().build();
     }

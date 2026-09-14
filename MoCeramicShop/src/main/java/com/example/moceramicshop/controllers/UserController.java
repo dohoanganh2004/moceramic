@@ -6,6 +6,8 @@ import com.example.moceramicshop.dtos.request.user.UpdateProfileRequestDTO;
 import com.example.moceramicshop.dtos.request.user.UpdateUserRequestDTO;
 import com.example.moceramicshop.dtos.response.user.UserResponseDTO;
 import com.example.moceramicshop.security.CustomUserDetails;
+import com.example.moceramicshop.security.PermissionGuard;
+import com.example.moceramicshop.services.PermissionService;
 import com.example.moceramicshop.services.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -14,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,7 +28,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Set;
@@ -35,18 +40,44 @@ import java.util.Set;
 public class UserController {
 
     private final UserService userService;
+    private final PermissionGuard permissionGuard;
+    private final PermissionService permissionService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, PermissionGuard permissionGuard, PermissionService permissionService) {
         this.userService = userService;
+        this.permissionGuard = permissionGuard;
+        this.permissionService = permissionService;
+    }
+
+    // GET/{id} and PUT/{id} double as the "My Profile" page for every role
+    // (not just admin), so a user may always act on their own id. Anything
+    // else requires the "users" permission.
+    private boolean isSelfOrHasUsersPermission(CustomUserDetails currentUser, Long targetId) {
+        if (currentUser != null && currentUser.getUser().getId().equals(targetId)) {
+            return true;
+        }
+        return currentUser != null && (
+                "admin".equals(currentUser.getUser().getRole().getName())
+                        || permissionService.hasPermission(currentUser.getUser().getRole().getId(), "users")
+        );
+    }
+
+    private void requireSelfOrUsersPermission(CustomUserDetails currentUser, Long targetId) {
+        if (!isSelfOrHasUsersPermission(currentUser, targetId)) {
+            permissionGuard.require(currentUser, "users");
+        }
     }
 
     @PostMapping
-    public ResponseEntity<UserResponseDTO> createUser(@Valid @RequestBody CreateUserRequestDTO request) {
+    public ResponseEntity<UserResponseDTO> createUser(@Valid @RequestBody CreateUserRequestDTO request,
+                                                        @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "users");
         return ResponseEntity.status(HttpStatus.CREATED).body(userService.create(request));
     }
 
     @GetMapping
-    public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
+    public ResponseEntity<List<UserResponseDTO>> getAllUsers(@AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "users");
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
@@ -60,7 +91,9 @@ public class UserController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "users");
         String field = SORTABLE_FIELDS.contains(sortBy) ? sortBy : "createdAt";
         Sort sort = "asc".equalsIgnoreCase(sortDir) ? Sort.by(field).ascending() : Sort.by(field).descending();
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), sort);
@@ -68,28 +101,43 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserResponseDTO> getUserById(@PathVariable Long id) {
+    public ResponseEntity<UserResponseDTO> getUserById(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        requireSelfOrUsersPermission(currentUser, id);
         return ResponseEntity.ok(userService.getUserById(id));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserResponseDTO> updateUser(@PathVariable Long id, @Valid @RequestBody UpdateUserRequestDTO request) {
+    public ResponseEntity<UserResponseDTO> updateUser(@PathVariable Long id, @Valid @RequestBody UpdateUserRequestDTO request,
+                                                        @AuthenticationPrincipal CustomUserDetails currentUser) {
+        requireSelfOrUsersPermission(currentUser, id);
+        boolean canManageUsers = "admin".equals(currentUser.getUser().getRole().getName())
+                || permissionService.hasPermission(currentUser.getUser().getRole().getId(), "users");
+        if (!canManageUsers) {
+            // Self-service edit (e.g. via "My Profile"): never let the request
+            // change the caller's own role or active status, even if crafted
+            // by hand — only someone with the "users" permission may do that.
+            request.setRoleId(currentUser.getUser().getRole().getId());
+            request.setIsActive(currentUser.getUser().getIsActive());
+        }
         return ResponseEntity.ok(userService.updateUser(id, request));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "users");
         userService.deleteUserById(id);
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{id}/ban")
-    public ResponseEntity<UserResponseDTO> banUser(@PathVariable Long id) {
+    public ResponseEntity<UserResponseDTO> banUser(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "users");
         return ResponseEntity.ok(userService.banUser(id));
     }
 
     @PatchMapping("/{id}/unban")
-    public ResponseEntity<UserResponseDTO> unbanUser(@PathVariable Long id) {
+    public ResponseEntity<UserResponseDTO> unbanUser(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "users");
         return ResponseEntity.ok(userService.unbanUser(id));
     }
 
@@ -102,6 +150,12 @@ public class UserController {
     public ResponseEntity<UserResponseDTO> updateMyProfile(@Valid @RequestBody UpdateProfileRequestDTO request,
                                                              @AuthenticationPrincipal CustomUserDetails currentUser) {
         return ResponseEntity.ok(userService.updateProfile(currentUser.getUser().getId(), request));
+    }
+
+    @PutMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<UserResponseDTO> updateMyAvatar(@RequestPart("file") MultipartFile file,
+                                                             @AuthenticationPrincipal CustomUserDetails currentUser) {
+        return ResponseEntity.ok(userService.updateAvatar(currentUser.getUser().getId(), file));
     }
 
     @PutMapping("/me/password")

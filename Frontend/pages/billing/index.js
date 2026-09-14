@@ -7,37 +7,57 @@ import {
   FormGroup,
   Label,
   Input,
-  Form,
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from "reactstrap";
 import Link from "next/link";
 import { useSelector } from "react-redux";
 import { useRouter } from "next/router";
 import s from "./Billing.module.scss";
+import resolveAssetUrl from "utils/resolveAssetUrl";
+import { formatVND } from "utils/formatCurrency";
 import axios from "axios";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import Head from "next/head";
+import AddressSelector from "components/e-commerce/AddressSelector";
 
-const emptyAddressForm = {
-  recipientName: "",
-  phone: "",
-  addressLine: "",
-  ward: "",
-  district: "",
-  city: "",
-  country: "Việt Nam",
+const PAYMENT_METHODS = [
+  { value: "cod", label: "Cash on Delivery (COD)", description: "Pay with cash when your order arrives." },
+  { value: "bank_transfer", label: "Bank Transfer", description: "Transfer the total amount to our bank account." },
+];
+
+const BANK_TRANSFER_INFO = {
+  bankName: "Vietcombank",
+  accountName: "CONG TY TNHH MOCERAMIC",
+  accountNumber: "0123456789",
 };
+
+const CHECKOUT_ITEM_IDS_KEY = "checkoutItemIds";
 
 const Index = () => {
   const currentUser = useSelector((store) => store.auth.currentUser);
   const router = useRouter();
   const [cart, setCart] = React.useState(null);
+  const [checkoutItemIds, setCheckoutItemIds] = React.useState(null);
   const [addresses, setAddresses] = React.useState([]);
   const [selectedAddressId, setSelectedAddressId] = React.useState(null);
-  const [showNewAddress, setShowNewAddress] = React.useState(false);
-  const [addressForm, setAddressForm] = React.useState(emptyAddressForm);
   const [voucherCode, setVoucherCode] = React.useState("");
   const [note, setNote] = React.useState("");
+  const [paymentMethod, setPaymentMethod] = React.useState("cod");
   const [placing, setPlacing] = React.useState(false);
+  const [placedOrder, setPlacedOrder] = React.useState(null);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = JSON.parse(sessionStorage.getItem(CHECKOUT_ITEM_IDS_KEY));
+      if (Array.isArray(stored)) setCheckoutItemIds(stored);
+    } catch (e) {
+      // ignore malformed value
+    }
+  }, []);
 
   const fetchCart = () => {
     axios.get("/cart").then((res) => setCart(res.data)).catch(() => setCart(null));
@@ -57,51 +77,58 @@ const Index = () => {
     fetchAddresses();
   }, [currentUser]);
 
-  const saveNewAddress = () => {
-    axios
-      .post("/address/create", addressForm)
-      .then((res) => {
-        toast.info("Address added");
-        setShowNewAddress(false);
-        setAddressForm(emptyAddressForm);
-        fetchAddresses();
-        setSelectedAddressId(res.data.id);
-      })
-      .catch(() => toast.error("Could not save this address"));
-  };
+  const allItems = (cart && cart.items) || [];
+  // A selection from the cart page narrows checkout to just those items;
+  // visiting /billing directly (no selection stored) falls back to the whole cart.
+  const checkoutItems = checkoutItemIds
+    ? allItems.filter((item) => checkoutItemIds.includes(item.id))
+    : allItems;
+  const checkoutSubtotal = checkoutItems.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0);
 
   const placeOrder = () => {
     if (!selectedAddressId) {
       toast.error("Please choose a shipping address");
       return;
     }
-    if (!cart || !cart.items || cart.items.length === 0) {
+    if (checkoutItems.length === 0) {
       toast.error("Your cart is empty");
       return;
     }
     setPlacing(true);
-    const items = cart.items.map((item) => ({ variantId: item.variantId, quantity: item.quantity }));
+    const items = checkoutItems.map((item) => ({ variantId: item.variantId, quantity: item.quantity }));
     axios
       .post("/order", {
         shippingAddressId: selectedAddressId,
         voucherCode: voucherCode || null,
         note: note || null,
+        paymentMethod,
         items,
       })
       .then((res) => {
         return Promise.all(
-          cart.items.map((item) => axios.delete(`/cart/items/${item.id}`).catch(() => {}))
+          checkoutItems.map((item) => axios.delete(`/cart/items/${item.id}`).catch(() => {}))
         ).then(() => res);
       })
       .then((res) => {
+        if (typeof window !== "undefined") sessionStorage.removeItem(CHECKOUT_ITEM_IDS_KEY);
         toast.info("Order placed successfully");
-        router.push(`/products`);
+        if (paymentMethod === "bank_transfer") {
+          setPlacedOrder(res.data);
+        } else {
+          router.push(`/order/my-order/${res.data.id}`);
+        }
       })
       .catch((err) => {
         const message = (err.response && err.response.data && err.response.data.message) || "Could not place your order";
         toast.error(message);
       })
       .finally(() => setPlacing(false));
+  };
+
+  const closeBankTransferModal = () => {
+    const orderId = placedOrder && placedOrder.id;
+    setPlacedOrder(null);
+    router.push(orderId ? `/order/my-order/${orderId}` : "/order/my-order");
   };
 
   return (
@@ -112,7 +139,6 @@ const Index = () => {
         <meta name="description" content="Beautifully designed web application template built with React and Bootstrap to create modern apps and speed up development" />
         <meta charSet="utf-8" />
       </Head>
-      <ToastContainer />
       {!currentUser ? (
         <Row>
           <Col sm={12}>
@@ -134,109 +160,15 @@ const Index = () => {
           </Row>
           <Row className={"mt-3"}>
             <Col lg={7} xs={12}>
-              <div className={"d-flex justify-content-between align-items-center mb-4"}>
-                <h4 className={"fw-bold mb-0"}>Shipping Address</h4>
-                <Button
-                  className={"bg-transparent border-0 p-0 text-primary fw-bold"}
-                  onClick={() => setShowNewAddress((v) => !v)}
-                >
-                  {showNewAddress ? "Cancel" : "+ Add New Address"}
-                </Button>
-              </div>
-              {showNewAddress ? (
-                <Form className={`${s.form} mb-4`}>
-                  <FormGroup>
-                    <Label className="fw-bold">Recipient Name*</Label>
-                    <Input
-                      value={addressForm.recipientName}
-                      onChange={(e) => setAddressForm({ ...addressForm, recipientName: e.target.value })}
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <Label className="fw-bold">Phone*</Label>
-                    <Input
-                      value={addressForm.phone}
-                      onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <Label className="fw-bold">Address Line*</Label>
-                    <Input
-                      value={addressForm.addressLine}
-                      onChange={(e) => setAddressForm({ ...addressForm, addressLine: e.target.value })}
-                    />
-                  </FormGroup>
-                  <FormGroup className="d-flex">
-                    <div className="flex-fill mr-3">
-                      <Label className="fw-bold">Ward</Label>
-                      <Input
-                        value={addressForm.ward}
-                        onChange={(e) => setAddressForm({ ...addressForm, ward: e.target.value })}
-                      />
-                    </div>
-                    <div className="flex-fill">
-                      <Label className="fw-bold">District</Label>
-                      <Input
-                        value={addressForm.district}
-                        onChange={(e) => setAddressForm({ ...addressForm, district: e.target.value })}
-                      />
-                    </div>
-                  </FormGroup>
-                  <FormGroup className="d-flex">
-                    <div className="flex-fill mr-3">
-                      <Label className="fw-bold">City*</Label>
-                      <Input
-                        value={addressForm.city}
-                        onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
-                      />
-                    </div>
-                    <div className="flex-fill">
-                      <Label className="fw-bold">Country</Label>
-                      <Input
-                        value={addressForm.country}
-                        onChange={(e) => setAddressForm({ ...addressForm, country: e.target.value })}
-                      />
-                    </div>
-                  </FormGroup>
-                  <Button color="primary" className="fw-bold text-uppercase" onClick={saveNewAddress}>
-                    Save Address
-                  </Button>
-                </Form>
-              ) : addresses.length === 0 ? (
-                <p className={"text-muted"}>You have no saved addresses yet. Add one to continue.</p>
-              ) : (
-                addresses.map((addr) => (
-                  <div
-                    key={addr.id}
-                    className={"d-flex align-items-start mb-3 p-3"}
-                    style={{
-                      border: selectedAddressId === addr.id ? "2px solid #bd744c" : "1px solid #D9D9D9",
-                      borderRadius: 6,
-                      cursor: "pointer",
-                    }}
-                    onClick={() => setSelectedAddressId(addr.id)}
-                  >
-                    <Input
-                      type="radio"
-                      checked={selectedAddressId === addr.id}
-                      onChange={() => setSelectedAddressId(addr.id)}
-                      className={"mr-3 mt-1"}
-                    />
-                    <div>
-                      <h6 className={"fw-bold mb-0"}>
-                        {addr.recipientName}
-                        {addr.isDefault ? (
-                          <span className={"text-primary ml-2"} style={{ fontSize: 11 }}>(default)</span>
-                        ) : null}
-                      </h6>
-                      <p className={"text-muted mb-1"}>{addr.phone}</p>
-                      <p className={"text-muted mb-0"}>
-                        {[addr.addressLine, addr.ward, addr.district, addr.city, addr.country].filter(Boolean).join(", ")}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              )}
+              <AddressSelector
+                addresses={addresses}
+                selectedAddressId={selectedAddressId}
+                onSelect={setSelectedAddressId}
+                onAddressAdded={(newAddress) => {
+                  fetchAddresses();
+                  setSelectedAddressId(newAddress.id);
+                }}
+              />
 
               <FormGroup className={"mt-4"}>
                 <Label className="fw-bold">Order Note</Label>
@@ -251,14 +183,14 @@ const Index = () => {
             <Col lg={5} xs={12}>
               <section className={s.paymentInfo}>
                 <h3 className={"fw-bold mb-4"}>Order Summary</h3>
-                {!cart || !cart.items || cart.items.length === 0 ? (
+                {!cart || checkoutItems.length === 0 ? (
                   <p className={"text-muted"}>Your cart is empty.</p>
                 ) : (
                   <>
-                    {cart.items.map((item) => (
+                    {checkoutItems.map((item) => (
                       <div key={item.id} className={"d-flex justify-content-between align-items-center mb-3"}>
                         <div className={"d-flex align-items-center"}>
-                          <img src={item.imageUrl} width={56} className={"mr-3"} alt={item.productName} />
+                          <img src={resolveAssetUrl(item.imageUrl)} width={56} className={"mr-3"} alt={item.productName} />
                           <div>
                             <p className={"mb-0 fw-bold"}>{item.productName}</p>
                             <p className={"mb-0 text-muted"} style={{ fontSize: 13 }}>
@@ -266,7 +198,7 @@ const Index = () => {
                             </p>
                           </div>
                         </div>
-                        <p className={"mb-0 fw-bold"}>${item.lineTotal}</p>
+                        <p className={"mb-0 fw-bold"}>{formatVND(item.lineTotal)}</p>
                       </div>
                     ))}
                     <hr />
@@ -280,8 +212,36 @@ const Index = () => {
                     </FormGroup>
                     <div className={"d-flex justify-content-between mb-2"}>
                       <p className={"mb-0 text-muted"}>Subtotal</p>
-                      <p className={"mb-0 fw-bold"}>${cart.totalAmount}</p>
+                      <p className={"mb-0 fw-bold"}>{formatVND(checkoutSubtotal)}</p>
                     </div>
+
+                    <FormGroup className={"mt-4"}>
+                      <Label className="fw-bold">Payment Method</Label>
+                      {PAYMENT_METHODS.map((pm) => (
+                        <div
+                          key={pm.value}
+                          className={"d-flex align-items-start mb-2 p-3"}
+                          style={{
+                            border: paymentMethod === pm.value ? "2px solid #bd744c" : "1px solid #D9D9D9",
+                            borderRadius: 6,
+                            cursor: "pointer",
+                          }}
+                          onClick={() => setPaymentMethod(pm.value)}
+                        >
+                          <Input
+                            type="radio"
+                            checked={paymentMethod === pm.value}
+                            onChange={() => setPaymentMethod(pm.value)}
+                            className={"mr-3 mt-1"}
+                          />
+                          <div>
+                            <h6 className={"fw-bold mb-0"}>{pm.label}</h6>
+                            <p className={"text-muted mb-0"} style={{ fontSize: 13 }}>{pm.description}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </FormGroup>
+
                     <Button
                       color={"primary"}
                       className={`${s.checkOutBtn} text-uppercase mt-3 fw-bold w-100`}
@@ -297,6 +257,32 @@ const Index = () => {
           </Row>
         </>
       )}
+
+      <Modal isOpen={!!placedOrder} toggle={closeBankTransferModal}>
+        <ModalHeader toggle={closeBankTransferModal}>Complete your bank transfer</ModalHeader>
+        <ModalBody>
+          {placedOrder && (
+            <>
+              <p>
+                Your order <strong>{placedOrder.orderCode}</strong> has been placed. Please transfer{" "}
+                <strong>{formatVND(placedOrder.totalAmount)}</strong> using the details below, using your order code as the transfer note.
+              </p>
+              <div className={"p-3"} style={{ background: "#f8f8f8", borderRadius: 6 }}>
+                <p className={"mb-1"}><strong>Bank:</strong> {BANK_TRANSFER_INFO.bankName}</p>
+                <p className={"mb-1"}><strong>Account Name:</strong> {BANK_TRANSFER_INFO.accountName}</p>
+                <p className={"mb-1"}><strong>Account Number:</strong> {BANK_TRANSFER_INFO.accountNumber}</p>
+                <p className={"mb-0"}><strong>Transfer Note:</strong> {placedOrder.orderCode}</p>
+              </div>
+              <p className={"text-muted mt-3 mb-0"} style={{ fontSize: 13 }}>
+                We will confirm your payment and start processing your order once the transfer is received.
+              </p>
+            </>
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <Button color="primary" onClick={closeBankTransferModal}>Continue Shopping</Button>
+        </ModalFooter>
+      </Modal>
     </Container>
   );
 };

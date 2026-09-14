@@ -13,6 +13,7 @@ import com.example.moceramicshop.models.BlacklistedToken;
 import com.example.moceramicshop.models.Role;
 import com.example.moceramicshop.models.User;
 import com.example.moceramicshop.repositories.BlacklistedTokenRepository;
+import com.example.moceramicshop.repositories.RolePermissionRepository;
 import com.example.moceramicshop.repositories.RoleRepository;
 import com.example.moceramicshop.repositories.UserRepository;
 import com.example.moceramicshop.security.CustomUserDetails;
@@ -26,6 +27,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.List;
 
 import static com.example.moceramicshop.security.JwtTokenProvider.TOKEN_TYPE_ACCESS;
 import static com.example.moceramicshop.security.JwtTokenProvider.TOKEN_TYPE_REFRESH;
@@ -38,6 +40,7 @@ public class AuthServiceImp implements AuthService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final RolePermissionRepository rolePermissionRepository;
     private final BlacklistedTokenRepository blacklistedTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
@@ -45,16 +48,24 @@ public class AuthServiceImp implements AuthService {
     private final AuthenticationManager authenticationManager;
 
     public AuthServiceImp(UserRepository userRepository, RoleRepository roleRepository,
+                           RolePermissionRepository rolePermissionRepository,
                            BlacklistedTokenRepository blacklistedTokenRepository, PasswordEncoder passwordEncoder,
                            UserMapper userMapper, JwtTokenProvider jwtTokenProvider,
                            AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
+        this.rolePermissionRepository = rolePermissionRepository;
         this.blacklistedTokenRepository = blacklistedTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.userMapper = userMapper;
         this.jwtTokenProvider = jwtTokenProvider;
         this.authenticationManager = authenticationManager;
+    }
+
+    private List<String> getPermissionCodes(Integer roleId) {
+        return rolePermissionRepository.findByRoleId(roleId).stream()
+                .map(rp -> rp.getPermission().getCode())
+                .toList();
     }
 
     @Override
@@ -110,7 +121,7 @@ public class AuthServiceImp implements AuthService {
         }
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
-        String accessToken = jwtTokenProvider.generateAccessToken(userDetails);
+        String accessToken = jwtTokenProvider.generateAccessToken(userDetails, getPermissionCodes(userDetails.getUser().getRole().getId()));
         String refreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
         log.info("User id={} logged in", userDetails.getUser().getId());
         return new LoginResponseDTO(accessToken, refreshToken);
@@ -133,7 +144,7 @@ public class AuthServiceImp implements AuthService {
         User user = userRepository.findWithRoleById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user với id " + userId));
 
-        String newAccessToken = jwtTokenProvider.generateAccessToken(new CustomUserDetails(user));
+        String newAccessToken = jwtTokenProvider.generateAccessToken(new CustomUserDetails(user), getPermissionCodes(user.getRole().getId()));
         log.info("Issued new access token for userId={}", userId);
         return new LoginResponseDTO(newAccessToken, refreshToken);
     }

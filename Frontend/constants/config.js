@@ -5,11 +5,13 @@ const hostApi =
 const portApi =
   process.env.NODE_ENV === "development" ? "8080" : '';
 const baseURLApi = `${hostApi}:${portApi}/api`;
+const assetBaseUrl = `${hostApi}:${portApi}`;
 
 export default {
   hostApi,
   portApi,
   baseURLApi,
+  assetBaseUrl,
   remote: "https://flatlogic-ecommerce-backend.herokuapp.com/api/:41521",
   isBackend: process.env.REACT_APP_BACKEND,
   app: {

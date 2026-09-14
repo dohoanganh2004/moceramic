@@ -10,15 +10,15 @@ import PropTypes from 'prop-types';
 import MoneyIcon from 'public/images/e-commerce/admin/widgets/moneyIcon';
 import s from './Dashboard.module.scss';
 
-const SimpleLine = ({ color, title, subtitle, value }) => {
+const SimpleLine = ({ color, title, subtitle, value, trend }) => {
 
     function getRandomData(length, min, max, multiplier = 15, maxDiff = 5) {
         var array = new Array(length).fill();
         let lastValue;
-      
+
         return array.map((item, index) => {
           let randomValue = Math.floor(Math.random() * multiplier + 1);
-      
+
           while (
             randomValue <= min ||
             randomValue >= max ||
@@ -26,13 +26,14 @@ const SimpleLine = ({ color, title, subtitle, value }) => {
           ) {
             randomValue = Math.floor(Math.random() * multiplier + 1);
           }
-      
+
           lastValue = randomValue;
-      
+
           return { value: randomValue };
         });
       }
     const randomData = React.useMemo(() => getRandomData(10), []);
+    const chartData = trend && trend.length > 0 ? trend.map((v) => ({ value: v })) : randomData;
     return (
       <div className={s.dashboardWidgetWrapper}>
         <h4 className={s.widgetTitle}>{title}</h4>
@@ -40,7 +41,7 @@ const SimpleLine = ({ color, title, subtitle, value }) => {
         <div>
           <MoneyIcon className={s.moneyIcon} />
           <ResponsiveContainer height={90} width="100%">
-            <AreaChart data={randomData}>
+            <AreaChart data={chartData}>
               <Area
                 type="natural"
                 dataKey="value"

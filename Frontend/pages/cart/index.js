@@ -1,24 +1,36 @@
 import React from "react";
-import { Container, Row, Col, Table, Button } from "reactstrap";
+import { Container, Row, Col, Table, Button, Input } from "reactstrap";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import s from "./Cart.module.scss";
 import close from "public/images/e-commerce/close.svg";
 import { useSelector } from "react-redux";
 import axios from "axios";
 import Head from "next/head";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
+import { emitCartUpdated } from "utils/cartEvents";
+import resolveAssetUrl from "utils/resolveAssetUrl";
+import { formatVND } from "utils/formatCurrency";
+
+const CHECKOUT_ITEM_IDS_KEY = "checkoutItemIds";
 
 const Index = () => {
   const currentUser = useSelector((store) => store.auth.currentUser);
+  const router = useRouter();
   const [cart, setCart] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
+  const [selectedIds, setSelectedIds] = React.useState(new Set());
 
-  const fetchCart = () => {
+  const fetchCart = ({ resetSelection } = {}) => {
     axios
       .get("/cart")
       .then((res) => {
         setCart(res.data);
         setLoading(false);
+        emitCartUpdated(res.data.totalItems);
+        if (resetSelection) {
+          setSelectedIds(new Set((res.data.items || []).map((item) => item.id)));
+        }
       })
       .catch(() => {
         setLoading(false);
@@ -27,11 +39,28 @@ const Index = () => {
 
   React.useEffect(() => {
     if (currentUser) {
-      fetchCart();
+      fetchCart({ resetSelection: true });
     } else {
       setLoading(false);
     }
   }, [currentUser]);
+
+  const toggleSelected = (itemId) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    const allIds = ((cart && cart.items) || []).map((item) => item.id);
+    setSelectedIds((prev) => (prev.size === allIds.length ? new Set() : new Set(allIds)));
+  };
 
   const updateQuantity = (itemId, quantity) => {
     if (quantity < 1) return;
@@ -39,6 +68,7 @@ const Index = () => {
       .patch(`/cart/items/${itemId}`, { quantity })
       .then((res) => {
         setCart(res.data);
+        emitCartUpdated(res.data.totalItems);
       })
       .catch(() => {
         toast.error("Could not update quantity");
@@ -50,6 +80,11 @@ const Index = () => {
       .delete(`/cart/items/${itemId}`)
       .then(() => {
         toast.info("Item removed from cart");
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(itemId);
+          return next;
+        });
         fetchCart();
       })
       .catch(() => {
@@ -57,8 +92,16 @@ const Index = () => {
       });
   };
 
+  const goToCheckout = () => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(CHECKOUT_ITEM_IDS_KEY, JSON.stringify(Array.from(selectedIds)));
+    }
+    router.push("/billing");
+  };
+
   const items = (cart && cart.items) || [];
-  const totalPrice = (cart && cart.totalAmount) || 0;
+  const selectedItems = items.filter((item) => selectedIds.has(item.id));
+  const totalPrice = selectedItems.reduce((sum, item) => sum + Number(item.lineTotal || 0), 0);
 
   return (
     <Container>
@@ -85,7 +128,6 @@ const Index = () => {
         <meta name="twitter:site" content="@flatlogic" />
       </Head>
       <Row className={"mb-5"} style={{ marginTop: 32 }}>
-        <ToastContainer />
         <Col xs={12} lg={8}>
           <h2 className={"fw-bold mt-4 mb-5"}>Shopping Cart</h2>
           {!currentUser ? (
@@ -100,6 +142,16 @@ const Index = () => {
             <Table borderless>
               <thead>
                 <tr style={{ borderBottom: "1px solid #D9D9D9" }}>
+                  <th className={"bg-transparent text-dark px-0"} style={{ width: 36 }}>
+                    {items.length > 0 && (
+                      <Input
+                        type="checkbox"
+                        checked={selectedIds.size === items.length}
+                        onChange={toggleSelectAll}
+                        style={{ position: "static", margin: 0 }}
+                      />
+                    )}
+                  </th>
                   <th className={"bg-transparent text-dark px-0"}>Product</th>
                   <th className={"bg-transparent text-dark px-0"}>Quantity</th>
                   <th className={"bg-transparent text-dark px-0"}>Price</th>
@@ -122,9 +174,17 @@ const Index = () => {
                   items.map((item) => (
                     <tr className={"mt-2"} key={item.id}>
                       <td className={"px-0 pt-4"}>
+                        <Input
+                          type="checkbox"
+                          checked={selectedIds.has(item.id)}
+                          onChange={() => toggleSelected(item.id)}
+                          style={{ position: "static", margin: 0 }}
+                        />
+                      </td>
+                      <td className={"px-0 pt-4"}>
                         <div className={"d-flex align-items-center"}>
                           <img
-                            src={item.imageUrl}
+                            src={resolveAssetUrl(item.imageUrl)}
                             width={100}
                             className={"mr-4"}
                           />
@@ -154,7 +214,7 @@ const Index = () => {
                         </div>
                       </td>
                       <td className={"px-0 pt-4"}>
-                        <h6 className={"fw-bold mb-0"}>{item.lineTotal}$</h6>
+                        <h6 className={"fw-bold mb-0"}>{formatVND(item.lineTotal)}</h6>
                       </td>
                       <td className={"px-0 pt-4"}>
                         <Button
@@ -176,7 +236,7 @@ const Index = () => {
             <h2 className={"fw-bold mb-5"}>Cart Total</h2>
             <div className={"d-flex"}>
               <h6 className={"fw-bold mr-5 mb-0"}>Subtotal:</h6>
-              <h6 className={"fw-bold mb-0"}>{totalPrice}$</h6>
+              <h6 className={"fw-bold mb-0"}>{formatVND(totalPrice)}</h6>
             </div>
             <hr className={"my-4"} />
             <div className={"d-flex"}>
@@ -193,16 +253,16 @@ const Index = () => {
               <h5 className={"fw-bold"} style={{ marginRight: 63 }}>
                 Total:
               </h5>
-              <h5 className={"fw-bold"}>{totalPrice}$</h5>
+              <h5 className={"fw-bold"}>{formatVND(totalPrice)}</h5>
             </div>
-            <Link href={"/billing"}>
-              <Button
-                color={"primary"}
-                className={`${s.checkOutBtn} text-uppercase mt-auto fw-bold`}
-              >
-                Check out
-              </Button>
-            </Link>
+            <Button
+              color={"primary"}
+              className={`${s.checkOutBtn} text-uppercase mt-auto fw-bold`}
+              disabled={selectedItems.length === 0}
+              onClick={goToCheckout}
+            >
+              Check out ({selectedItems.length})
+            </Button>
           </section>
         </Col>
       </Row>

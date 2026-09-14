@@ -7,6 +7,7 @@ import com.example.moceramicshop.dtos.request.order.OrderStatusUpdateRequestDTO;
 import com.example.moceramicshop.dtos.response.order.OrderResponseDTO;
 import com.example.moceramicshop.exceptions.ForbiddenException;
 import com.example.moceramicshop.security.CustomUserDetails;
+import com.example.moceramicshop.security.PermissionGuard;
 import com.example.moceramicshop.services.OrderServiceImp;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -33,12 +34,15 @@ import java.util.Set;
 @RequestMapping("/api/order")
 public class OrderController {
     private final OrderServiceImp orderServiceImp;
-    public OrderController(OrderServiceImp orderServiceImp) {
+    private final PermissionGuard permissionGuard;
+    public OrderController(OrderServiceImp orderServiceImp, PermissionGuard permissionGuard) {
         this.orderServiceImp = orderServiceImp;
+        this.permissionGuard = permissionGuard;
     }
     @GetMapping("/all")
-    public ResponseEntity<List<OrderResponseDTO>> getAllOrders() {
-     return  ResponseEntity.ok(orderServiceImp.getAll());
+    public ResponseEntity<List<OrderResponseDTO>> getAllOrders(@AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "orders");
+        return  ResponseEntity.ok(orderServiceImp.getAll());
     }
 
     private static final Set<String> SORTABLE_FIELDS = Set.of("orderCode", "status", "totalAmount", "createdAt", "updatedAt");
@@ -50,7 +54,9 @@ public class OrderController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "orders");
         String field = SORTABLE_FIELDS.contains(sortBy) ? sortBy : "createdAt";
         Sort sort = "asc".equalsIgnoreCase(sortDir) ? Sort.by(field).ascending() : Sort.by(field).descending();
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), sort);
@@ -80,11 +86,13 @@ public class OrderController {
     public ResponseEntity<OrderResponseDTO> updateStatus(@PathVariable Long orderId,
                                                            @Valid @RequestBody OrderStatusUpdateRequestDTO dto,
                                                            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "orders");
         return ResponseEntity.ok(orderServiceImp.updateStatus(orderId, currentUser.getUser().getId(), dto));
     }
 
     @DeleteMapping("/{orderId}")
-    public ResponseEntity<Void> delete(@PathVariable Long orderId) {
+    public ResponseEntity<Void> delete(@PathVariable Long orderId, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "orders");
         orderServiceImp.delete(orderId);
         return ResponseEntity.noContent().build();
     }
@@ -93,18 +101,23 @@ public class OrderController {
     public ResponseEntity<OrderResponseDTO> cancel(@PathVariable Long orderId,
                                                      @RequestBody OrderCancelRequestDTO dto,
                                                      @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "orders");
         return ResponseEntity.ok(orderServiceImp.cancel(orderId, currentUser.getUser().getId(), dto));
     }
 
     @PatchMapping("/{orderId}/items/{orderItemId}")
     public ResponseEntity<OrderResponseDTO> updateOrderItem(@PathVariable Long orderId,
                                                               @PathVariable Long orderItemId,
-                                                              @Valid @RequestBody OrderItemUpdateRequestDTO dto) {
+                                                              @Valid @RequestBody OrderItemUpdateRequestDTO dto,
+                                                              @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "orders");
         return ResponseEntity.ok(orderServiceImp.updateOrderItem(orderId, orderItemId, dto));
     }
 
     @DeleteMapping("/{orderId}/items/{orderItemId}")
-    public ResponseEntity<Void> deleteOrderItem(@PathVariable Long orderId, @PathVariable Long orderItemId) {
+    public ResponseEntity<Void> deleteOrderItem(@PathVariable Long orderId, @PathVariable Long orderItemId,
+                                                 @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "orders");
         orderServiceImp.deleteOrderItem(orderItemId, orderId);
         return ResponseEntity.noContent().build();
     }

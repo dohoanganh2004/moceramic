@@ -1,12 +1,15 @@
 package com.example.moceramicshop.controllers;
 
 import com.example.moceramicshop.dtos.response.newsletter.NewsletterSubscriberResponseDTO;
+import com.example.moceramicshop.security.CustomUserDetails;
+import com.example.moceramicshop.security.PermissionGuard;
 import com.example.moceramicshop.services.NewsletterSubscriberService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,15 +25,18 @@ import java.util.Set;
 public class NewsletterSubscriberController {
 
     private final NewsletterSubscriberService newsletterSubscriberService;
+    private final PermissionGuard permissionGuard;
 
-    public NewsletterSubscriberController(NewsletterSubscriberService newsletterSubscriberService) {
+    public NewsletterSubscriberController(NewsletterSubscriberService newsletterSubscriberService, PermissionGuard permissionGuard) {
         this.newsletterSubscriberService = newsletterSubscriberService;
+        this.permissionGuard = permissionGuard;
     }
 
     private static final Set<String> SORTABLE_FIELDS = Set.of("email", "subscribedAt", "isActive");
 
     @GetMapping
-    public ResponseEntity<List<NewsletterSubscriberResponseDTO>> getAll() {
+    public ResponseEntity<List<NewsletterSubscriberResponseDTO>> getAll(@AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "newsletter");
         return ResponseEntity.ok(newsletterSubscriberService.getAllSubscribers());
     }
 
@@ -41,7 +47,9 @@ public class NewsletterSubscriberController {
             @RequestParam(defaultValue = "subscribedAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "newsletter");
         String field = SORTABLE_FIELDS.contains(sortBy) ? sortBy : "subscribedAt";
         Sort sort = "asc".equalsIgnoreCase(sortDir) ? Sort.by(field).ascending() : Sort.by(field).descending();
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), sort);
@@ -49,7 +57,8 @@ public class NewsletterSubscriberController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "newsletter");
         newsletterSubscriberService.delete(id);
         return ResponseEntity.noContent().build();
     }

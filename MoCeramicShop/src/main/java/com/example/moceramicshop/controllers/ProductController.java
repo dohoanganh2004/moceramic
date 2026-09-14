@@ -2,6 +2,8 @@ package com.example.moceramicshop.controllers;
 
 import com.example.moceramicshop.dtos.request.product.ProductRequestDTO;
 import com.example.moceramicshop.dtos.response.product.ProductResponseDTO;
+import com.example.moceramicshop.security.CustomUserDetails;
+import com.example.moceramicshop.security.PermissionGuard;
 import com.example.moceramicshop.services.ProductService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -11,6 +13,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,14 +35,18 @@ import java.util.Set;
 public class ProductController {
 
     private final ProductService productService;
+    private final PermissionGuard permissionGuard;
 
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService, PermissionGuard permissionGuard) {
         this.productService = productService;
+        this.permissionGuard = permissionGuard;
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProductResponseDTO> create(@RequestPart("data") @Valid ProductRequestDTO dto,
-                                                       @RequestPart(value = "files", required = false) List<MultipartFile> files) {
+                                                       @RequestPart(value = "files", required = false) List<MultipartFile> files,
+                                                       @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "products");
         return ResponseEntity.status(HttpStatus.CREATED).body(productService.create(dto, files));
     }
 
@@ -60,7 +67,9 @@ public class ProductController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "products");
         String field = SORTABLE_FIELDS.contains(sortBy) ? sortBy : "createdAt";
         Sort sort = "asc".equalsIgnoreCase(sortDir) ? Sort.by(field).ascending() : Sort.by(field).descending();
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), sort);
@@ -73,12 +82,15 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ProductResponseDTO> update(@PathVariable Long id, @Valid @RequestBody ProductRequestDTO dto) {
+    public ResponseEntity<ProductResponseDTO> update(@PathVariable Long id, @Valid @RequestBody ProductRequestDTO dto,
+                                                       @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "products");
         return ResponseEntity.ok(productService.update(id, dto));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        permissionGuard.require(currentUser, "products");
         productService.delete(id);
         return ResponseEntity.noContent().build();
     }
