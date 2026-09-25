@@ -35,55 +35,43 @@ const actions = {
     }
   },
 
-  doCreate: (values) => async (dispatch) => {
+  doCreate: ({ dto, image }) => async (dispatch) => {
     try {
-      dispatch({
-        type: "CATEGORIES_FORM_CREATE_STARTED",
-      });
+      dispatch({ type: "CATEGORIES_FORM_CREATE_STARTED" });
 
-      axios.post("/categories", values).then((res) => {
-        dispatch({
-          type: "CATEGORIES_FORM_CREATE_SUCCESS",
-        });
+      const formData = new FormData();
+      formData.append("data", new Blob([JSON.stringify(dto)], { type: "application/json" }));
+      if (image) formData.append("image", image);
 
-        toast.success("сategories created");
+      axios.post("/categories", formData).then(() => {
+        dispatch({ type: "CATEGORIES_FORM_CREATE_SUCCESS" });
+        toast.success("Category created");
         if (typeof window !== 'undefined') { window.location.href = "/admin/categories" }
       });
     } catch (error) {
       Errors.handle(error);
-
-      dispatch({
-        type: "CATEGORIES_FORM_CREATE_ERROR",
-      });
+      dispatch({ type: "CATEGORIES_FORM_CREATE_ERROR" });
     }
   },
 
-  doUpdate: (id, values, isProfile) => async (dispatch, getState) => {
+  doUpdate: (id, { dto, image }, isProfile) => async (dispatch, getState) => {
     try {
-      dispatch({
-        type: "CATEGORIES_FORM_UPDATE_STARTED",
-      });
+      dispatch({ type: "CATEGORIES_FORM_UPDATE_STARTED" });
 
-      await axios.put(`/categories/${id}`, values);
+      const formData = new FormData();
+      formData.append("data", new Blob([JSON.stringify(dto)], { type: "application/json" }));
+      if (image) formData.append("image", image);
+
+      await axios.put(`/categories/${id}`, formData);
 
       dispatch(doInit());
+      dispatch({ type: "CATEGORIES_FORM_UPDATE_SUCCESS" });
 
-      dispatch({
-        type: "CATEGORIES_FORM_UPDATE_SUCCESS",
-      });
-
-      if (isProfile) {
-        toast.success("Profile updated");
-      } else {
-        toast.success("сategories updated");
-        if (typeof window !== 'undefined') { window.location.href = "/admin/categories" }
-      }
+      toast.success("Category updated");
+      if (typeof window !== 'undefined') { window.location.href = "/admin/categories" }
     } catch (error) {
       Errors.handle(error);
-
-      dispatch({
-        type: "CATEGORIES_FORM_UPDATE_ERROR",
-      });
+      dispatch({ type: "CATEGORIES_FORM_UPDATE_ERROR" });
     }
   },
 };

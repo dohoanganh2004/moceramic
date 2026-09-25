@@ -35,18 +35,22 @@ const actions = {
     }
   },
 
-  doCreate: (values) => async (dispatch) => {
+  doCreate: ({ dto, thumbnail }) => async (dispatch) => {
     try {
       dispatch({
         type: "BLOGS_FORM_CREATE_STARTED",
       });
 
-      axios.post("/blog-posts", values).then((res) => {
+      const formData = new FormData();
+      formData.append("data", new Blob([JSON.stringify(dto)], { type: "application/json" }));
+      if (thumbnail) formData.append("thumbnail", thumbnail);
+
+      axios.post("/blog-posts", formData).then((res) => {
         dispatch({
           type: "BLOGS_FORM_CREATE_SUCCESS",
         });
 
-        toast.success("blogs created");
+        toast.success("Blog post created");
         if (typeof window !== 'undefined') { window.location.href = "/admin/blogs" }
       });
     } catch (error) {
@@ -58,13 +62,17 @@ const actions = {
     }
   },
 
-  doUpdate: (id, values, isProfile) => async (dispatch, getState) => {
+  doUpdate: (id, { dto, thumbnail }, isProfile) => async (dispatch, getState) => {
     try {
       dispatch({
         type: "BLOGS_FORM_UPDATE_STARTED",
       });
 
-      await axios.put(`/blog-posts/${id}`, values);
+      const formData = new FormData();
+      formData.append("data", new Blob([JSON.stringify(dto)], { type: "application/json" }));
+      if (thumbnail) formData.append("thumbnail", thumbnail);
+
+      await axios.put(`/blog-posts/${id}`, formData);
 
       dispatch(doInit());
 
@@ -72,12 +80,8 @@ const actions = {
         type: "BLOGS_FORM_UPDATE_SUCCESS",
       });
 
-      if (isProfile) {
-        toast.success("Profile updated");
-      } else {
-        toast.success("blogs updated");
-        if (typeof window !== 'undefined') { window.location.href = "/admin/blogs" }
-      }
+      toast.success("Blog post updated");
+      if (typeof window !== 'undefined') { window.location.href = "/admin/blogs" }
     } catch (error) {
       Errors.handle(error);
 

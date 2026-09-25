@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -22,7 +23,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Set;
@@ -39,11 +42,14 @@ public class BlogPostController {
         this.permissionGuard = permissionGuard;
     }
 
-    @PostMapping
-    public ResponseEntity<BlogPostResponseDTO> create(@Valid @RequestBody BlogPostRequestDTO dto,
-                                                        @AuthenticationPrincipal CustomUserDetails currentUser) {
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<BlogPostResponseDTO> create(
+            @RequestPart("data") @Valid BlogPostRequestDTO dto,
+            @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
         permissionGuard.require(currentUser, "blog");
-        return ResponseEntity.status(HttpStatus.CREATED).body(blogPostService.create(dto, currentUser.getUser().getId()));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(blogPostService.create(dto, currentUser.getUser().getId(), thumbnail));
     }
 
     @GetMapping
@@ -76,11 +82,14 @@ public class BlogPostController {
         return ResponseEntity.ok(blogPostService.getPostById(id));
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<BlogPostResponseDTO> update(@PathVariable Long id, @Valid @RequestBody BlogPostRequestDTO dto,
-                                                        @AuthenticationPrincipal CustomUserDetails currentUser) {
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<BlogPostResponseDTO> update(
+            @PathVariable Long id,
+            @RequestPart("data") @Valid BlogPostRequestDTO dto,
+            @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
         permissionGuard.require(currentUser, "blog");
-        return ResponseEntity.ok(blogPostService.update(id, dto));
+        return ResponseEntity.ok(blogPostService.update(id, dto, thumbnail));
     }
 
     @PatchMapping("/{id}/publish")

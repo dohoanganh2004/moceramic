@@ -11,8 +11,8 @@ public interface CategoryService {
     List<CategoryResponseDTO> getAllCategories();
     Page<CategoryResponseDTO> search(String search, Long parentId, Pageable pageable);
     CategoryResponseDTO getCategoryById(Long id);
-    CategoryResponseDTO create(CategoryRequestDTO dto);
-    CategoryResponseDTO update(Long id, CategoryRequestDTO dto);
+    CategoryResponseDTO create(CategoryRequestDTO dto, org.springframework.web.multipart.MultipartFile image);
+    CategoryResponseDTO update(Long id, CategoryRequestDTO dto, org.springframework.web.multipart.MultipartFile image);
     void delete(Long id);
 
     List<CategoryResponseDTO> getRootCategories();

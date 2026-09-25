@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.List;
@@ -29,11 +30,14 @@ public class BlogPostServiceImp implements BlogPostService {
     private final BlogPostRepository blogPostRepository;
     private final UserRepository userRepository;
     private final BlogPostMapper blogPostMapper;
+    private final FileStorageService fileStorageService;
 
-    public BlogPostServiceImp(BlogPostRepository blogPostRepository, UserRepository userRepository, BlogPostMapper blogPostMapper) {
+    public BlogPostServiceImp(BlogPostRepository blogPostRepository, UserRepository userRepository,
+                               BlogPostMapper blogPostMapper, FileStorageService fileStorageService) {
         this.blogPostRepository = blogPostRepository;
         this.userRepository = userRepository;
         this.blogPostMapper = blogPostMapper;
+        this.fileStorageService = fileStorageService;
     }
 
     @Override
@@ -60,18 +64,22 @@ public class BlogPostServiceImp implements BlogPostService {
     }
 
     @Override
-    public BlogPostResponseDTO create(BlogPostRequestDTO dto, Long authorUserId) {
+    public BlogPostResponseDTO create(BlogPostRequestDTO dto, Long authorUserId, MultipartFile thumbnail) {
         if (blogPostRepository.existsBySlug(dto.getSlug())) {
             throw new ConflictException("Slug đã tồn tại, vui lòng chọn slug khác");
         }
         User author = userRepository.findById(authorUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user với id " + authorUserId));
 
+        String thumbnailUrl = (thumbnail != null && !thumbnail.isEmpty())
+                ? fileStorageService.store(thumbnail)
+                : dto.getThumbnailUrl();
+
         BlogPost post = new BlogPost();
         post.setTitle(dto.getTitle());
         post.setSlug(dto.getSlug());
         post.setContent(dto.getContent());
-        post.setThumbnailUrl(dto.getThumbnailUrl());
+        post.setThumbnailUrl(thumbnailUrl);
         post.setAuthor(author);
         post.setStatus(STATUS_DRAFT);
         post.setCreatedAt(Instant.now());
@@ -83,7 +91,7 @@ public class BlogPostServiceImp implements BlogPostService {
     }
 
     @Override
-    public BlogPostResponseDTO update(Long id, BlogPostRequestDTO dto) {
+    public BlogPostResponseDTO update(Long id, BlogPostRequestDTO dto, MultipartFile thumbnail) {
         BlogPost post = blogPostRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài viết với id " + id));
 
@@ -91,10 +99,19 @@ public class BlogPostServiceImp implements BlogPostService {
             throw new ConflictException("Slug đã tồn tại, vui lòng chọn slug khác");
         }
 
+        if (thumbnail != null && !thumbnail.isEmpty()) {
+            // Delete old thumbnail from storage if it was uploaded (not an external URL)
+            if (post.getThumbnailUrl() != null) {
+                fileStorageService.delete(post.getThumbnailUrl());
+            }
+            post.setThumbnailUrl(fileStorageService.store(thumbnail));
+        } else if (dto.getThumbnailUrl() != null) {
+            post.setThumbnailUrl(dto.getThumbnailUrl());
+        }
+
         post.setTitle(dto.getTitle());
         post.setSlug(dto.getSlug());
         post.setContent(dto.getContent());
-        post.setThumbnailUrl(dto.getThumbnailUrl());
         post.setUpdatedAt(Instant.now());
 
         BlogPost saved = blogPostRepository.saveAndFlush(post);

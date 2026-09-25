@@ -6,9 +6,17 @@ import ImagePreviewGrid from "components/ImagePreviewGrid";
 import slugify from "utils/slugify";
 import axios from "axios";
 
-const emptyVariant = { sku: "", colorGlaze: "", size: "", price: "", weightGrams: "", dimensions: "", quantityOnHand: "" };
+const generateSKU = () => {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const random = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  return `P-${random}`;
+};
+
+const emptyVariant = () => ({ sku: generateSKU(), colorGlaze: "", size: "", price: "", weightGrams: "", dimensions: "", quantityOnHand: "" });
 
 class ProductsForm extends Component {
+  fileInputRef = React.createRef();
+
   state = {
     categories: [],
     categoryId: "",
@@ -19,7 +27,7 @@ class ProductsForm extends Component {
     material: "",
     origin: "",
     basePrice: "",
-    variants: [{ ...emptyVariant }],
+    variants: [emptyVariant()],
     files: [],
     slugEdited: false,
   };
@@ -45,11 +53,30 @@ class ProductsForm extends Component {
     this.setState({ variants });
   };
 
-  addVariantRow = () => this.setState({ variants: [...this.state.variants, { ...emptyVariant }] });
+  addVariantRow = () => this.setState({ variants: [...this.state.variants, emptyVariant()] });
+
+  addFiles = (newFiles) => {
+    // Append newly selected files to existing list; reset the native input
+    // so the same file can be picked again after a removal.
+    this.setState((prev) => ({ files: [...prev.files, ...newFiles] }), () => {
+      if (this.fileInputRef.current) {
+        this.fileInputRef.current.value = "";
+      }
+    });
+  };
+
+  removeFile = (index) => {
+    this.setState((prev) => ({ files: prev.files.filter((_, i) => i !== index) }));
+  };
+  refreshSKU = (index) => {
+    const variants = [...this.state.variants];
+    variants[index] = { ...variants[index], sku: generateSKU() };
+    this.setState({ variants });
+  };
 
   removeVariantRow = (index) => {
     const variants = this.state.variants.filter((_, i) => i !== index);
-    this.setState({ variants: variants.length ? variants : [{ ...emptyVariant }] });
+    this.setState({ variants: variants.length ? variants : [emptyVariant()] });
   };
 
   handleSubmit = (e) => {
@@ -132,8 +159,22 @@ class ProductsForm extends Component {
           {variants.map((v, i) => (
             <div key={i} className="d-flex align-items-end mb-2" style={{ gap: 8, flexWrap: "wrap" }}>
               <div>
-                <Label className="mb-0" style={{ fontSize: 12 }}>SKU*</Label>
-                <Input value={v.sku} onChange={(e) => this.setVariantField(i, "sku", e.target.value)} style={{ width: 120 }} />
+                <Label className="mb-0" style={{ fontSize: 12 }}>SKU (auto)</Label>
+                <div className="d-flex align-items-center" style={{ gap: 4 }}>
+                  <Input
+                    value={v.sku}
+                    readOnly
+                    style={{ width: 130, backgroundColor: "#f8f9fa", fontFamily: "monospace", fontSize: 13 }}
+                  />
+                  <Button
+                    type="button"
+                    color="light"
+                    size="sm"
+                    title="Generate new SKU"
+                    onClick={() => this.refreshSKU(i)}
+                    style={{ padding: "4px 8px", fontSize: 14 }}
+                  >↺</Button>
+                </div>
               </div>
               <div>
                 <Label className="mb-0" style={{ fontSize: 12 }}>Color/Glaze</Label>
@@ -174,13 +215,14 @@ class ProductsForm extends Component {
               type="file"
               multiple
               accept="image/*"
-              onChange={(e) => this.setField("files", Array.from(e.target.files || []))}
+              innerRef={this.fileInputRef}
+              onChange={(e) => this.addFiles(Array.from(e.target.files || []))}
             />
             <p className="text-muted mt-1" style={{ fontSize: 12 }}>{files.length} file(s) selected. First image is set as primary.</p>
             <ImagePreviewGrid
               files={files}
               primaryLabel="Primary"
-              onRemove={(index) => this.setField("files", files.filter((_, i) => i !== index))}
+              onRemove={this.removeFile}
             />
           </FormGroup>
 

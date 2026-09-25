@@ -18,7 +18,7 @@ import { loginUser } from "redux/actions/auth";
 import { toast } from "react-toastify";
 import microsoft from "public/images/microsoft.png";
 import img from "public/images/e-commerce/register/bg.png";
-import logo from "public/images/e-commerce/logo.svg";
+import Brand from "components/Brand";
 import eye from 'public/images/e-commerce/login/eye.png';
 import eyeOff from 'public/images/e-commerce/login/eye-off.png';
 import Head from 'next/head';
@@ -107,7 +107,11 @@ class Index extends React.Component {
       this.props.dispatch(authError(message));
       toast.error(message);
     } else if (!this.state.phoneNumber) {
-      const message = "Vui lòng nhập số điện thoại";
+      const message = "Please enter your phone number";
+      this.props.dispatch(authError(message));
+      toast.error(message);
+    } else if (!/^[0-9]{10}$/.test(this.state.phoneNumber)) {
+      const message = "Phone number must be exactly 10 digits";
       this.props.dispatch(authError(message));
       toast.error(message);
     } else {
@@ -136,16 +140,16 @@ class Index extends React.Component {
     return (
       <>
         <Head>
-          <title>Register | Ecommerce</title>
+          <title>Register | MoCeramic</title>
           <meta name="viewport" content="initial-scale=1.0, width=device-width" />
 
           <meta name="description" content={'Beautifully designed web application template built with React and Bootstrap to create modern apps and speed up development'}  />
           <meta name="keywords" content={"flatlogic, react templates"} />
-          <meta name="author" content={"Flatlogic LLC."} />
+          <meta name="author" content={"MoCeramic"} />
           <meta charSet="utf-8" />
 
 
-          <meta property="og:title" content={"Flatlogic - React, Vue, Angular and Bootstrap Templates and Admin Dashboard Themes"} />
+          <meta property="og:title" content={"MoCeramic - Handcrafted Ceramics"} />
           <meta property="og:type" content="website"/>
           <meta property="og:url" content={"https://flatlogic-ecommerce.herokuapp.com/"} />
           <meta property="og:image" content={"https://flatlogic-ecommerce-backend.herokuapp.com/images/blogs/content_image_six.jpg"} />
@@ -154,7 +158,7 @@ class Index extends React.Component {
 
           <meta property="fb:app_id" content={"712557339116053"} />
 
-          <meta property="og:site_name" content={"Flatlogic"} />
+          <meta property="og:site_name" content={"MoCeramic"} />
           <meta name="twitter:site" content={"@flatlogic"} />
         </Head>
         <Row className={"no-gutters"} style={{ height: "100vh" }}>
@@ -169,7 +173,7 @@ class Index extends React.Component {
               <Row className={"d-flex justify-content-center"}>
                 <Col lg={8} xs={"auto"}>
                   <Link href={"/"}>
-                    <img src={logo} alt={"logo"} style={{ marginBottom: 120 }} />
+                    <Brand size={32} style={{ marginBottom: 120, fontSize: 26, cursor: "pointer" }} />
                   </Link>
                   <h5 className={"fw-bold mb-5"}>Sign Up</h5>
                   <Form className={"w-100"} onSubmit={this.doRegister}>

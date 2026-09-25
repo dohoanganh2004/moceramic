@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -21,7 +22,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Set;
@@ -38,11 +41,13 @@ public class CategoryController {
         this.permissionGuard = permissionGuard;
     }
 
-    @PostMapping
-    public ResponseEntity<CategoryResponseDTO> create(@Valid @RequestBody CategoryRequestDTO dto,
-                                                        @AuthenticationPrincipal CustomUserDetails currentUser) {
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CategoryResponseDTO> create(
+            @RequestPart("data") @Valid CategoryRequestDTO dto,
+            @RequestPart(value = "image", required = false) MultipartFile image,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
         permissionGuard.require(currentUser, "categories");
-        return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.create(dto));
+        return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.create(dto, image));
     }
 
     @GetMapping
@@ -55,11 +60,14 @@ public class CategoryController {
         return ResponseEntity.ok(categoryService.getCategoryById(id));
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<CategoryResponseDTO> update(@PathVariable Long id, @Valid @RequestBody CategoryRequestDTO dto,
-                                                        @AuthenticationPrincipal CustomUserDetails currentUser) {
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CategoryResponseDTO> update(
+            @PathVariable Long id,
+            @RequestPart("data") @Valid CategoryRequestDTO dto,
+            @RequestPart(value = "image", required = false) MultipartFile image,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
         permissionGuard.require(currentUser, "categories");
-        return ResponseEntity.ok(categoryService.update(id, dto));
+        return ResponseEntity.ok(categoryService.update(id, dto, image));
     }
 
     @DeleteMapping("/{id}")

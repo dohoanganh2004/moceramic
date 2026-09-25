@@ -5,9 +5,24 @@ import { withRouter } from "next/router";
 import axios from "axios";
 import { toast } from "react-toastify";
 import Widget from "components/admin/Widget";
+import slugify from "utils/slugify";
 
 class Index extends Component {
+  slugEdited = false;
+
   state = { title: "", slug: "", content: "" };
+
+  setTitle = (value) => {
+    this.setState((prev) => ({
+      title: value,
+      slug: this.slugEdited ? prev.slug : slugify(value),
+    }));
+  };
+
+  setSlug = (value) => {
+    this.slugEdited = true;
+    this.setState({ slug: value });
+  };
 
   setField = (field, value) => this.setState({ [field]: value });
 
@@ -33,11 +48,12 @@ class Index extends Component {
           <form onSubmit={this.handleSubmit}>
             <FormGroup>
               <Label className="fw-bold">Title*</Label>
-              <Input value={title} onChange={(e) => this.setField("title", e.target.value)} required />
+              <Input value={title} onChange={(e) => this.setTitle(e.target.value)} required />
             </FormGroup>
             <FormGroup>
               <Label className="fw-bold">Slug*</Label>
-              <Input value={slug} onChange={(e) => this.setField("slug", e.target.value)} placeholder="lowercase-with-hyphens" required />
+              <Input value={slug} onChange={(e) => this.setSlug(e.target.value)} placeholder="auto-generated-from-title" required />
+              <small className="text-muted">Auto-generated from title. Edit manually to override.</small>
             </FormGroup>
             <FormGroup>
               <Label className="fw-bold">Content (HTML)*</Label>

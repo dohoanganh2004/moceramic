@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.List;
@@ -24,10 +25,13 @@ public class CategoryServiceImp implements CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final CategoryMapper categoryMapper;
+    private final FileStorageService fileStorageService;
 
-    public CategoryServiceImp(CategoryRepository categoryRepository, CategoryMapper categoryMapper) {
+    public CategoryServiceImp(CategoryRepository categoryRepository, CategoryMapper categoryMapper,
+                               FileStorageService fileStorageService) {
         this.categoryRepository = categoryRepository;
         this.categoryMapper = categoryMapper;
+        this.fileStorageService = fileStorageService;
     }
 
     @Override
@@ -54,17 +58,21 @@ public class CategoryServiceImp implements CategoryService {
     }
 
     @Override
-    public CategoryResponseDTO create(CategoryRequestDTO dto) {
+    public CategoryResponseDTO create(CategoryRequestDTO dto, MultipartFile image) {
         if (categoryRepository.existsBySlug(dto.getSlug())) {
             throw new ConflictException("Slug đã tồn tại, vui lòng chọn slug khác");
         }
+
+        String imageUrl = (image != null && !image.isEmpty())
+                ? fileStorageService.store(image)
+                : dto.getImageUrl();
 
         Category category = new Category();
         category.setParent(resolveParent(dto.getParentId(), null));
         category.setName(dto.getName());
         category.setSlug(dto.getSlug());
         category.setDescription(dto.getDescription());
-        category.setImageUrl(dto.getImageUrl());
+        category.setImageUrl(imageUrl);
         category.setSortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : 0);
         category.setCreatedAt(Instant.now());
         category.setUpdatedAt(Instant.now());
@@ -75,7 +83,7 @@ public class CategoryServiceImp implements CategoryService {
     }
 
     @Override
-    public CategoryResponseDTO update(Long id, CategoryRequestDTO dto) {
+    public CategoryResponseDTO update(Long id, CategoryRequestDTO dto, MultipartFile image) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục với id " + id));
 
@@ -83,11 +91,19 @@ public class CategoryServiceImp implements CategoryService {
             throw new ConflictException("Slug đã tồn tại, vui lòng chọn slug khác");
         }
 
+        if (image != null && !image.isEmpty()) {
+            if (category.getImageUrl() != null) {
+                fileStorageService.delete(category.getImageUrl());
+            }
+            category.setImageUrl(fileStorageService.store(image));
+        } else if (dto.getImageUrl() != null) {
+            category.setImageUrl(dto.getImageUrl());
+        }
+
         category.setParent(resolveParent(dto.getParentId(), id));
         category.setName(dto.getName());
         category.setSlug(dto.getSlug());
         category.setDescription(dto.getDescription());
-        category.setImageUrl(dto.getImageUrl());
         category.setSortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : 0);
         category.setUpdatedAt(Instant.now());
 

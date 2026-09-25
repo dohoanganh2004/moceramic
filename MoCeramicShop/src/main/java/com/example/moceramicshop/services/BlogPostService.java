@@ -11,8 +11,8 @@ public interface BlogPostService {
     List<BlogPostResponseDTO> getAllPosts();
     Page<BlogPostResponseDTO> search(String search, String status, Pageable pageable);
     BlogPostResponseDTO getPostById(Long id);
-    BlogPostResponseDTO create(BlogPostRequestDTO dto, Long authorUserId);
-    BlogPostResponseDTO update(Long id, BlogPostRequestDTO dto);
+    BlogPostResponseDTO create(BlogPostRequestDTO dto, Long authorUserId, org.springframework.web.multipart.MultipartFile thumbnail);
+    BlogPostResponseDTO update(Long id, BlogPostRequestDTO dto, org.springframework.web.multipart.MultipartFile thumbnail);
     BlogPostResponseDTO publish(Long id);
     BlogPostResponseDTO unpublish(Long id);
     void delete(Long id);
