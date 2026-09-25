@@ -165,7 +165,7 @@ class Header extends React.Component {
           )}
 
           <NavbarBrand>
-            <Link href={"/"}><span className={s.logoStyle}>Flatlogic</span></Link>
+            <Link href={"/"}><span className={s.logoStyle}>MoCeramic</span></Link>
           </NavbarBrand>
 
           {this.state.innerWidth >= 768 && (

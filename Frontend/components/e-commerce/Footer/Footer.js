@@ -5,7 +5,7 @@ import Link from 'next/link'
 import axios from "axios";
 import { toast } from "react-toastify";
 
-import logo from "public/images/e-commerce/logo-white.svg";
+import Brand from "components/Brand";
 import Google from "public/images/e-commerce/Google";
 import Twitter from "public/images/e-commerce/Twitter";
 import Linkedin from "public/images/e-commerce/Linkedin";
@@ -61,7 +61,7 @@ const Footer = () => {
                 className={"d-flex flex-column justify-content-between"}
               >
                 <div>
-                  <img alt="img" src={logo} className={"mb-4"} />
+                  <Brand light size={30} className={"mb-4"} style={{ fontSize: 24 }} />
                   <p className={"text-white fw-thin mb-0"}>
                     Lorem Ipsum has been the industry's standard dummy text ever
                     since the 1500s,
@@ -131,7 +131,7 @@ const Footer = () => {
         <hr className={`${s.footer__hr} mb-0`} />
         <Row style={{ padding: "30px 0" }}>
           <Col sm={12}>
-            <p className={"text-muted mb-0"}>© 2020-{new Date().getFullYear()} powered by <Link href="https://flatlogic.com"><span className={s.navigationLink}>Flatlogic</span></Link></p>
+            <p className={"text-muted mb-0"}>© 2020-{new Date().getFullYear()} MoCeramic. All rights reserved.</p>
           </Col>
         </Row>
       </Container>

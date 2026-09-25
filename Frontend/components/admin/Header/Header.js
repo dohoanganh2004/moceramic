@@ -30,6 +30,9 @@ import {
   changeActiveSidebarItem,
 } from "redux/actions/navigation";
 
+import { getStoredTheme, applyTheme } from "utils/theme";
+import Brand from "components/Brand";
+
 import s from "./Header.module.scss";
 
 class Header extends React.Component {
@@ -53,8 +56,19 @@ class Header extends React.Component {
       showNewMessage: false,
       hideMessage: true,
       run: true,
+      theme: "light",
     };
   }
+
+  componentDidMount() {
+    this.setState({ theme: getStoredTheme() });
+  }
+
+  toggleTheme = () => {
+    const theme = this.state.theme === "dark" ? "light" : "dark";
+    applyTheme(theme);
+    this.setState({ theme });
+  };
 
   toggleFocus = () => {
     this.setState({ focus: !this.state.focus });
@@ -185,14 +199,24 @@ class Header extends React.Component {
             chroma(navbarColor).luminance() < 0.4 ? "text-white" : ""
           }`}
         >
-          <i className="la la-circle text-primary mr-n-sm" />
-          <i className="la la-circle text-danger" />
-          &nbsp; Flatlogic &nbsp;
-          <i className="la la-circle text-danger mr-n-sm" />
-          <i className="la la-circle text-primary" />
+          <Brand size={22} />
         </NavLink>
 
         <Nav className="ml-auto">
+          <NavItem>
+            <NavLink
+              id="toggleTheme"
+              className={`${s.themeToggle} ${
+                chroma(navbarColor).luminance() < 0.4 ? "text-white" : ""
+              }`}
+              onClick={this.toggleTheme}
+            >
+              <i className={`la ${this.state.theme === "dark" ? "la-sun" : "la-moon"}`} />
+            </NavLink>
+            <UncontrolledTooltip placement="bottom" target="toggleTheme">
+              {this.state.theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            </UncontrolledTooltip>
+          </NavItem>
           <NavbarText>
             <span
               className={`${s.avatar} rounded-circle thumb-sm float-left mr-2`}

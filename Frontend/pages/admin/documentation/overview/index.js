@@ -15,11 +15,11 @@ const Overview = () => (
 
       <meta name="description" content="Beautifully designed web application template built with React and Bootstrap to create modern apps and speed up development" />
       <meta name="keywords" content="flatlogic, react templates" />
-      <meta name="author" content="Flatlogic LLC." />
+      <meta name="author" content="MoCeramic" />
       <meta charSet="utf-8" />
 
 
-      <meta property="og:title" content="Flatlogic - React, Vue, Angular and Bootstrap Templates and Admin Dashboard Themes"/>
+      <meta property="og:title" content="MoCeramic - Handcrafted Ceramics"/>
       <meta property="og:type" content="website"/>
       <meta property="og:url" content="https://flatlogic-ecommerce.herokuapp.com/"/>
       <meta property="og:image" content="https://flatlogic-ecommerce-backend.herokuapp.com/images/blogs/content_image_six.jpg"/>
@@ -28,7 +28,7 @@ const Overview = () => (
 
       <meta property="fb:app_id" content="712557339116053" />
 
-      <meta property="og:site_name" content="Flatlogic"/>
+      <meta property="og:site_name" content="MoCeramic"/>
       <meta name="twitter:site" content="@flatlogic" />
     </Head>
     <Col lg={10}>

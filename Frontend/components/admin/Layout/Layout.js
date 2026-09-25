@@ -128,14 +128,7 @@ class Layout extends React.Component {
                 {this.props.children}
               </PageTransition>
               <footer className={s.contentFooter}>
-                Flatlogic Ecommerce - Made by{" "}
-                <a
-                  href="https://flatlogic.com"
-                  rel="nofollow noopener noreferrer"
-                  target="_blank"
-                >
-                  Flatlogic
-                </a>
+                MoCeramic
               </footer>
             </main>
           </Hammer>

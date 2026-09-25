@@ -219,6 +219,8 @@
   width: 100%;
   height: 600px;
   background-size: cover;
+  // The hero photos are light, so keep dark text on them in dark mode too.
+  color: #262626;
   &.firstImg {
     background-position: bottom;
     background-image: url("../public/images/e-commerce/home/bg.png");
@@ -334,7 +336,7 @@
     }
   }
   h6:first-child {
-    color: #232323;
+    color: var(--text-color, #232323);
   }
   &__actions {
     transition: all .65s ease;
@@ -397,7 +399,7 @@
   }
   @media (max-width: 380px) {
     background-size: contain;
-    background-color: #f6f6f6;
+    background-color: var(--surface-2, #f6f6f6);
   }
 }
 

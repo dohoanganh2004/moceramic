@@ -2,6 +2,7 @@ import React from "react";
 import { Button, Form, FormGroup, Label, Input } from "reactstrap";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { composeAddressLine, formatAddress } from "utils/formatAddress";
 
 const emptyAddressForm = {
   recipientName: "",
@@ -18,8 +19,12 @@ const AddressSelector = ({ addresses, selectedAddressId, onSelect, onAddressAdde
   const [addressForm, setAddressForm] = React.useState(emptyAddressForm);
 
   const saveNewAddress = () => {
+    if (!addressForm.city.trim()) {
+      toast.error("City is required");
+      return;
+    }
     axios
-      .post("/address/create", addressForm)
+      .post("/address/create", { ...addressForm, addressLine: composeAddressLine(addressForm) })
       .then((res) => {
         toast.info("Address added");
         setShowNewAddress(false);
@@ -56,13 +61,6 @@ const AddressSelector = ({ addresses, selectedAddressId, onSelect, onAddressAdde
               onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
             />
           </FormGroup>
-          <FormGroup>
-            <Label className="fw-bold">Address Line*</Label>
-            <Input
-              value={addressForm.addressLine}
-              onChange={(e) => setAddressForm({ ...addressForm, addressLine: e.target.value })}
-            />
-          </FormGroup>
           <FormGroup className="d-flex">
             <div className="flex-fill mr-3">
               <Label className="fw-bold">Ward</Label>
@@ -94,6 +92,14 @@ const AddressSelector = ({ addresses, selectedAddressId, onSelect, onAddressAdde
                 onChange={(e) => setAddressForm({ ...addressForm, country: e.target.value })}
               />
             </div>
+          </FormGroup>
+          <FormGroup>
+            <Label className="fw-bold">Address Line</Label>
+            <Input
+              readOnly
+              value={composeAddressLine(addressForm)}
+              placeholder="Auto-filled from Ward, District, City, Country"
+            />
           </FormGroup>
           <Button color="primary" className="fw-bold text-uppercase" onClick={saveNewAddress}>
             Save Address
@@ -128,7 +134,7 @@ const AddressSelector = ({ addresses, selectedAddressId, onSelect, onAddressAdde
               </h6>
               <p className={"text-muted mb-1"}>{addr.phone}</p>
               <p className={"text-muted mb-0"}>
-                {[addr.addressLine, addr.ward, addr.district, addr.city, addr.country].filter(Boolean).join(", ")}
+                {formatAddress(addr)}
               </p>
             </div>
           </div>

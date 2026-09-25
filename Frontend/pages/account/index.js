@@ -6,6 +6,7 @@ import Widget from "components/admin/Widget";
 import edit from "public/images/e-commerce/account/edit.svg";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { composeAddressLine, formatAddress } from "utils/formatAddress";
 
 const emptyAddressForm = {
   recipientName: "",
@@ -55,9 +56,14 @@ const Index = () => {
   };
 
   const saveAddress = () => {
+    if (!addressForm.city.trim()) {
+      toast.error("City is required");
+      return;
+    }
+    const payload = { ...addressForm, addressLine: composeAddressLine(addressForm) };
     const request = editingAddressId
-      ? axios.put(`/address/update/${editingAddressId}`, addressForm)
-      : axios.post("/address/create", addressForm);
+      ? axios.put(`/address/update/${editingAddressId}`, payload)
+      : axios.post("/address/create", payload);
     request
       .then(() => {
         toast.info(editingAddressId ? "Address updated" : "Address added");
@@ -124,7 +130,7 @@ const Index = () => {
                         </h6>
                         <p className={"text-muted mb-1"} style={{ fontSize: 13 }}>{addr.phone}</p>
                         <p className={"text-muted mb-1"} style={{ fontSize: 13 }}>
-                          {[addr.addressLine, addr.ward, addr.district, addr.city, addr.country].filter(Boolean).join(", ")}
+                          {formatAddress(addr)}
                         </p>
                         {!addr.isDefault ? (
                           <Button
@@ -175,13 +181,6 @@ const Index = () => {
               onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
             />
           </FormGroup>
-          <FormGroup>
-            <Label className="fw-bold">Address Line*</Label>
-            <Input
-              value={addressForm.addressLine}
-              onChange={(e) => setAddressForm({ ...addressForm, addressLine: e.target.value })}
-            />
-          </FormGroup>
           <FormGroup className="d-flex">
             <div className="flex-fill mr-3">
               <Label className="fw-bold">Ward</Label>
@@ -213,6 +212,14 @@ const Index = () => {
                 onChange={(e) => setAddressForm({ ...addressForm, country: e.target.value })}
               />
             </div>
+          </FormGroup>
+          <FormGroup>
+            <Label className="fw-bold">Address Line</Label>
+            <Input
+              readOnly
+              value={composeAddressLine(addressForm)}
+              placeholder="Auto-filled from Ward, District, City, Country"
+            />
           </FormGroup>
           <Button color="primary" className="fw-bold text-uppercase w-100" onClick={saveAddress}>
             Save Address

@@ -1,0 +1,230 @@
+// Dark mode. Toggled by setting data-theme="dark" on <html> (see utils/theme.js
+// and the moon/sun button in components/admin/Header). Most component styles are
+// CSS modules with hard-coded light colours, so this sheet overrides them by
+// class-name prefix ([class*="Widget_widget"]) rather than editing each module.
+$d-bg: #12141a;
+$d-surface: #1c1f2a;
+$d-surface-2: #252a38;
+$d-border: #323849;
+$d-text: #e4e6eb;
+$d-muted: #9aa1b1;
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  // Read by the page modules (color/background: var(--text-color, <light value>)).
+  --text-color: #{$d-text};
+  --surface-bg: #{$d-surface};
+  --surface-2: #{$d-surface-2};
+
+  // react-input-range (price filter) + awesome-bootstrap-checkbox
+  .input-range__track--background {
+    background: $d-border;
+  }
+  .checkbox label::before,
+  .abc-checkbox label::before,
+  .abc-radio label::before {
+    background-color: $d-surface-2;
+    border-color: $d-border;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: #bd744c;
+  }
+
+  body,
+  [class*="Layout_content"] {
+    background-color: $d-bg !important;
+    color: $d-text;
+  }
+
+  a {
+    color: #6cb6f0;
+    &:hover {
+      color: #93cbf5;
+    }
+  }
+
+  .text-muted,
+  .text-secondary {
+    color: $d-muted !important;
+  }
+  .text-dark,
+  .text-black {
+    color: $d-text !important;
+  }
+
+  .bg-white,
+  .bg-light {
+    background-color: $d-surface !important;
+  }
+  .border,
+  .border-top,
+  .border-bottom,
+  .border-left,
+  .border-right {
+    border-color: $d-border !important;
+  }
+  hr {
+    border-top-color: $d-border;
+  }
+
+  // ---- Navbar (its background is also set inline by the navbar colour picker) ----
+  [class*="Header_root"] {
+    background-color: $d-surface !important;
+    box-shadow: 0 1px 0 $d-border !important;
+
+    a,
+    .la,
+    span {
+      color: $d-text !important;
+    }
+    .input-group-prepend,
+    .focus .input-group-prepend {
+      background-color: $d-surface-2 !important;
+    }
+  }
+
+  // ---- Sidebar ----
+  [class*="Sidebar_root"] {
+    background-color: $d-surface !important;
+    border-right-color: $d-border !important;
+  }
+  [class*="Sidebar_logoStyle"] {
+    color: $d-text !important;
+  }
+  // Collapsed sidebar hides labels by making the link text transparent, so only
+  // force the link colour while it is open; icons/labels live in spans.
+  [class*="Sidebar_sidebarWrapper"] [class*="LinksGroup_"] span,
+  [class*="Sidebar_sidebarWrapper"] .link-wrapper span {
+    color: $d-text !important;
+  }
+  [class*="Sidebar_sidebarWrapper"]:not([class*="Sidebar_sidebarClose"]) [class*="LinksGroup_"] a {
+    color: $d-text !important;
+  }
+  [class*="Sidebar_sidebarWrapper"] [class*="LinksGroup_"] a:hover,
+  [class*="Sidebar_sidebarWrapper"] [class*="LinksGroup_"] a:hover span {
+    color: #bd744c !important;
+  }
+
+  // ---- Cards / widgets / overlays ----
+  [class*="Widget_widget"],
+  .card,
+  .list-group-item,
+  .modal-content,
+  .popover,
+  .dropdown-menu {
+    background-color: $d-surface !important;
+    color: $d-text;
+    border-color: $d-border;
+  }
+  [class*="Widget_title"] {
+    color: $d-text;
+  }
+  .card-header,
+  .card-footer,
+  .modal-header,
+  .modal-footer {
+    border-color: $d-border;
+    background-color: transparent;
+  }
+  .close {
+    color: $d-text;
+    text-shadow: none;
+  }
+  .dropdown-item {
+    color: $d-text;
+    &:hover,
+    &:focus {
+      background-color: $d-surface-2;
+      color: $d-text;
+    }
+  }
+  .dropdown-divider {
+    border-top-color: $d-border;
+  }
+
+  // ---- Forms ----
+  .form-control,
+  .custom-select,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    background-color: $d-surface-2;
+    color: $d-text;
+    border-color: $d-border;
+    &::placeholder {
+      color: $d-muted;
+    }
+    &:focus {
+      background-color: $d-surface-2;
+      color: $d-text;
+    }
+    &:disabled,
+    &[readonly] {
+      background-color: darken($d-surface-2, 3%);
+      opacity: 1;
+    }
+  }
+  .input-group-text,
+  .input-group-addon {
+    background-color: $d-surface-2;
+    color: $d-text;
+    border-color: $d-border;
+  }
+
+  // ---- Tables ----
+  .table,
+  .table td,
+  .table th,
+  .react-bs-table,
+  .react-bs-container-body,
+  .react-bs-container-header {
+    color: $d-text;
+    border-color: $d-border !important;
+    background-color: transparent;
+  }
+  .table-striped tbody tr:nth-of-type(odd),
+  .table-hover tbody tr:hover,
+  .react-bs-table .table-striped > tbody > tr:nth-of-type(odd),
+  .react-bs-table .table-hover > tbody > tr:hover {
+    background-color: $d-surface-2 !important;
+  }
+
+  // ---- Misc bootstrap ----
+  .breadcrumb-item.active,
+  .breadcrumb-item + .breadcrumb-item::before {
+    color: $d-muted;
+  }
+  .page-link {
+    background-color: $d-surface;
+    border-color: $d-border;
+    color: $d-text;
+  }
+  .nav-tabs {
+    border-bottom-color: $d-border;
+  }
+  .nav-tabs .nav-link.active {
+    background-color: $d-surface;
+    color: $d-text;
+    border-color: $d-border $d-border $d-surface;
+  }
+  .btn-default,
+  .btn-light {
+    background-color: $d-surface-2;
+    border-color: $d-border;
+    color: $d-text;
+  }
+  .progress {
+    background-color: $d-surface-2;
+  }
+
+  // ---- Footer of storefront pages ----
+  footer {
+    background-color: $d-bg;
+    color: $d-muted;
+  }
+  footer a {
+    color: $d-muted;
+  }
+}

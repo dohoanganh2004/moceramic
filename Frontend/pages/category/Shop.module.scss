@@ -73,7 +73,7 @@
     }
   }
   h6:first-child {
-   color: #232323;
+   color: var(--text-color, #232323);
   }
   &__actions {
     display: none !important;
@@ -126,7 +126,7 @@
     display: none;
     position: absolute;
     z-index: 11;
-    background: #fff;
+    background: var(--surface-bg, #fff);
     border-radius: 8px;
     box-shadow: 0 0 40px -14px;
     padding: 20px;

@@ -12,6 +12,7 @@ import AdminLayout from 'components/admin/Layout'
 import "styles/theme.scss";
 import { useRouter } from "next/router";
 import PageTransition from "components/PageTransition";
+import { getStoredTheme, applyTheme } from "utils/theme";
 
 axios.defaults.baseURL = config.baseURLApi;
 axios.defaults.headers.common["Content-Type"] = "application/json";
@@ -122,6 +123,11 @@ function AppContent({ Component, pageProps }) {
 }
 
 function MyApp({ Component, pageProps, sidebarStatic }) {
+  // Backstop for the inline script in pages/_document.js (login/register have no header toggle).
+  React.useEffect(() => {
+    applyTheme(getStoredTheme());
+  }, []);
+
   React.useEffect(() => {
     document.querySelector("body").scrollTo(0, 0);
   });

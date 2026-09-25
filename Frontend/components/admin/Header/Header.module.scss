@@ -30,7 +30,7 @@
     }
 
     .input-group-prepend {
-      background-color: #fff;
+      background-color: var(--surface-bg, #fff);
       transition: background-color ease-in-out 0.15s;
       border-top-left-radius: 0.3rem;
       border-bottom-left-radius: 0.3rem;
@@ -41,7 +41,7 @@
     }
 
     .focus .input-group-prepend {
-      background: #f8f9fa;
+      background: var(--surface-2, #f8f9fa);
     }
   }
 }
@@ -61,7 +61,7 @@
     position: relative;
     display: inline;
     border: none;
-    background-color: #fff;
+    background-color: var(--surface-bg, #fff);
     transition: background-color ease-in-out 0.15s;
   }
 
@@ -89,6 +89,14 @@
 
   i {
     font-size: 10px;
+  }
+}
+
+.themeToggle {
+  cursor: pointer;
+
+  i {
+    font-size: 22px;
   }
 }
 

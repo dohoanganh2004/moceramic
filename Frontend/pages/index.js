@@ -10,9 +10,6 @@ import arrowRight from "public/images/e-commerce/home/arrow-right.svg";
 
 import InfoBlock from 'components/e-commerce/InfoBlock';
 import InstagramWidget from 'components/e-commerce/Instagram';
-import article1 from "public/images/e-commerce/home/article1.jpg";
-import article2 from "public/images/e-commerce/home/article2.jpg";
-import article3 from "public/images/e-commerce/home/article3.jpg";
 
 
 import { toast } from "react-toastify";
@@ -26,7 +23,7 @@ import { emitCartUpdated } from "utils/cartEvents";
 import resolveAssetUrl from "utils/resolveAssetUrl";
 import { formatVND } from "utils/formatCurrency";
 
-const Index = ({ products: serverSideProducts }) => {
+const Index = ({ products: serverSideProducts, blogPosts = [] }) => {
   const [quantity, setQuantity] = React.useState(1);
   const dispatchStore = useDispatch();
   const openReducer = (state, action) => {
@@ -171,11 +168,11 @@ const Index = ({ products: serverSideProducts }) => {
 
         <meta name="description" content="Beautifully designed web application template built with React and Bootstrap to create modern apps and speed up development" />
         <meta name="keywords" content="flatlogic, react templates" />
-        <meta name="author" content="Flatlogic LLC." />
+        <meta name="author" content="MoCeramic" />
         <meta charSet="utf-8" />
 
 
-        <meta property="og:title" content="Flatlogic - React, Vue, Angular and Bootstrap Templates and Admin Dashboard Themes"/>
+        <meta property="og:title" content="MoCeramic - Handcrafted Ceramics"/>
         <meta property="og:type" content="website"/>
         <meta property="og:url" content="https://flatlogic-ecommerce.herokuapp.com/"/>
         <meta property="og:image" content="https://flatlogic-ecommerce-backend.herokuapp.com/images/blogs/content_image_six.jpg"/>
@@ -184,7 +181,7 @@ const Index = ({ products: serverSideProducts }) => {
 
         <meta property="fb:app_id" content="712557339116053" />
 
-        <meta property="og:site_name" content="Flatlogic"/>
+        <meta property="og:site_name" content="MoCeramic"/>
         <meta name="twitter:site" content="@flatlogic" />
       </Head>
       <Carousel prevLabel="prev" nextLabel="next">
@@ -650,66 +647,39 @@ const Index = ({ products: serverSideProducts }) => {
             </p>
           </Col>
         </Row>
-        <Row>
-          <Col
-            xs={12}
-            md={4}
-            className={"mb-4 d-flex flex-column align-items-center"}
-          >
-            <div className={s.imgAnimation}>
-              <Link href="/blog/article/07aeff53-31e5-4276-8307-f855b22b6436"><img src={article1} className={"img-fluid"} /></Link>
-            </div>
-            <p className={"mt-3 text-muted mb-0"}>March 12, 2020</p>
-            <h6
-              className={"fw-bold font-size-base mt-1"}
-              style={{ fontSize: 16 }}
-            >
-              
-What is Shabby Chic?
-            </h6>
-            <h6 style={{ fontSize: 16 }} className={"fw-bold text-primary"}>
-            <Link href="/blog/article/07aeff53-31e5-4276-8307-f855b22b6436">Read More</Link>
-            </h6>
-          </Col>
-          <Col
-            xs={12}
-            md={4}
-            className={"mb-4 d-flex flex-column align-items-center"}
-          >
-            <div className={s.imgAnimation}>
-            <Link href="/blog/article/c4245ff9-6a53-4b13-8539-0b69b442cfd1"><img src={article2} className={"img-fluid"} /></Link>
-            </div>
-            <p className={"mt-3 text-muted mb-0"}>March 12, 2020</p>
-            <h6
-              className={"fw-bold font-size-base mt-1"}
-              style={{ fontSize: 16 }}
-            >
-              Best Examples of Maximalism
-            </h6>
-            <h6 style={{ fontSize: 16 }} className={"fw-bold text-primary"}>
-            <Link href="/blog/article/c4245ff9-6a53-4b13-8539-0b69b442cfd1">Read More</Link>
-            </h6>
-          </Col>
-          <Col
-            xs={12}
-            md={4}
-            className={"mb-4 d-flex flex-column align-items-center"}
-          >
-            <div className={s.imgAnimation}>
-            <Link href="/blog/article/57fbad3f-528a-43b2-83e8-32ba30708194"><img src={article3} className={"img-fluid"} /></Link>
-            </div>
-            <p className={"mt-3 text-muted mb-0"}>March 12, 2020</p>
-            <h6
-              className={"fw-bold font-size-base mt-1"}
-              style={{ fontSize: 16 }}
-            >
-              What is Lorem Ipsum?
-            </h6>
-            <h6 style={{ fontSize: 16 }} className={"fw-bold text-primary"}>
-            <Link href="/blog/article/57fbad3f-528a-43b2-83e8-32ba30708194">Read More</Link>
-            </h6>
-          </Col>
-        </Row>
+        {blogPosts.length === 0 ? (
+          <p className={"text-center text-muted"}>No blog posts yet.</p>
+        ) : (
+          <Row>
+            {blogPosts.map((post) => (
+              <Col
+                xs={12}
+                md={4}
+                className={"mb-4 d-flex flex-column align-items-center"}
+                key={post.id}
+              >
+                {post.thumbnailUrl ? (
+                  <div className={s.imgAnimation}>
+                    <Link href={`/blog/article/${post.slug}`}>
+                      <a>
+                        <img src={resolveAssetUrl(post.thumbnailUrl)} className={"img-fluid"} alt={post.title} />
+                      </a>
+                    </Link>
+                  </div>
+                ) : null}
+                <p className={"mt-3 text-muted mb-0"}>
+                  {post.createdAt && post.createdAt.toString().slice(0, 10)}
+                </p>
+                <h6 className={"fw-bold font-size-base mt-1"} style={{ fontSize: 16 }}>
+                  {post.title}
+                </h6>
+                <h6 style={{ fontSize: 16 }} className={"fw-bold text-primary"}>
+                  <Link href={`/blog/article/${post.slug}`}>Read More</Link>
+                </h6>
+              </Col>
+            ))}
+          </Row>
+        )}
         <Row className={"d-flex justify-content-center"}>
           <Link href={"/blog"}>
             <Button
@@ -737,8 +707,16 @@ export async function getServerSideProps(context) {
     products = [];
   }
 
+  let blogPosts = [];
+  try {
+    const res = await axios.get("/public/blog-posts", { params: { size: 3 } });
+    blogPosts = res.data.content || [];
+  } catch (error) {
+    blogPosts = [];
+  }
+
   return {
-    props: { products }, // will be passed to the page component as props
+    props: { products, blogPosts }, // will be passed to the page component as props
   };
 }
 

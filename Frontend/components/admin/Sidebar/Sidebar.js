@@ -11,6 +11,7 @@ import {
 } from "redux/actions/navigation";
 import isScreen from "core/screenHelper";
 import { logoutUser } from "redux/actions/auth";
+import Brand from "components/Brand";
 
 import HomeIcon from "public/images/e-commerce/sidebar/home";
 import DownloadIcon from "public/images/e-commerce/sidebar/download";
@@ -150,7 +151,7 @@ class Sidebar extends React.Component {
         >
           <header className={s.logo}>
             <span className={`${s.logoStyle} mx-1`}>
-              Flatlogic<i>.</i>
+              <Brand size={26} />
             </span>
           </header>
           <ul className={s.nav}>

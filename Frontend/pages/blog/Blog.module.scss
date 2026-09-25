@@ -3,7 +3,7 @@
 .categoryLink {
   margin-bottom: 0;
   & > a {
-    color: $text-color;
+    color: var(--text-color, #{$text-color});
   }
 }
 
@@ -55,7 +55,7 @@
 
     /* Basic 900 */
 
-    color: #262626;
+    color: var(--text-color, #262626);
   }
 }
 
@@ -83,7 +83,7 @@
   
   /* Basic 900 */
   
-  color: #262626;
+  color: var(--text-color, #262626);
   
   mix-blend-mode: normal;
 }

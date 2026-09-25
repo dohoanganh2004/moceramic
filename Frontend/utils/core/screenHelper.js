@@ -1,6 +1,6 @@
 const config = {
   name: "react ecommerce",
-  title: "React Ecommerce built with React JS by Flatlogic",
+  title: "MoCeramic - Handcrafted Ceramics",
   version: "3.8.0",
   settings: {
     screens: {

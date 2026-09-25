@@ -8,7 +8,7 @@
   bottom: 0;
   border-right: $sidebar-border;
   // background-color: var(--sidebar-bg-color);
-  background-color: #fff;
+  background-color: var(--surface-bg, #fff);
   color: theme-color("primary");
   overflow-y: auto;
   @include scroll-bar($sidebar-scrollbar-bg);
@@ -217,4 +217,9 @@
 
 .groupTitle {
   margin-bottom: 15px;
+}
+
+// Collapsed sidebar only has room for the blossom icon, not the "MoCeramic" wordmark.
+.sidebarClose .logo :global(.brand-text) {
+  display: none;
 }

@@ -61,7 +61,7 @@
 .leaveFeedbackBtn {
   transition: color .2s .3ms;
   &:hover {
-    color: #232323 !important;
+    color: var(--text-color, #232323) !important;
   }
 }
 
@@ -78,7 +78,7 @@
     }
   }
   a {
-    color: #232323;
+    color: var(--text-color, #232323);
   }
 }
 

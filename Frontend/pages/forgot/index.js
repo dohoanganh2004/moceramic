@@ -4,6 +4,7 @@ import {withRouter} from 'next/router'
 import Link from 'next/link'
 import { connect } from "react-redux";
 import { Alert, Button, Container } from "reactstrap";
+import Brand from "components/Brand";
 import Widget from "components/admin/Widget";
 import Head from 'next/head';
 import { sendPasswordResetEmail } from "redux/actions/auth";
@@ -37,16 +38,16 @@ class Index extends React.Component {
     return (
       <>
         <Head>
-          <title>Forgot password | Ecommerce</title>
+          <title>Forgot password | MoCeramic</title>
           <meta name="viewport" content="initial-scale=1.0, width=device-width" />
 
           <meta name="description" content={'Beautifully designed web application template built with React and Bootstrap to create modern apps and speed up development'}  />
           <meta name="keywords" content={"flatlogic, react templates"} />
-          <meta name="author" content={"Flatlogic LLC."} />
+          <meta name="author" content={"MoCeramic"} />
           <meta charSet="utf-8" />
 
 
-          <meta property="og:title" content={"Flatlogic - React, Vue, Angular and Bootstrap Templates and Admin Dashboard Themes"} />
+          <meta property="og:title" content={"MoCeramic - Handcrafted Ceramics"} />
           <meta property="og:type" content="website"/>
           <meta property="og:url" content={"https://flatlogic-ecommerce.herokuapp.com/"} />
           <meta property="og:image" content={"https://flatlogic-ecommerce-backend.herokuapp.com/images/blogs/content_image_six.jpg"} />
@@ -55,15 +56,13 @@ class Index extends React.Component {
 
           <meta property="fb:app_id" content={"712557339116053"} />
 
-          <meta property="og:site_name" content={"Flatlogic"} />
+          <meta property="og:site_name" content={"MoCeramic"} />
           <meta name="twitter:site" content={"@flatlogic"} />
         </Head>
         <div className="auth-page">
           <Container>
             <h5 className="auth-logo">
-              <i className="la la-circle text-gray" />
-              Flatlogic Ecommerce
-              <i className="la la-circle text-warning" />
+              <Brand size={28} />
             </h5>
             <Widget
               className="widget-auth mx-auto text-center"

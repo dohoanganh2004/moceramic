@@ -33,7 +33,7 @@
 }
 
 .dashboardWidgetWrapper {
-  background-color: #ffffff;
+  background-color: var(--surface-bg, #ffffff);
   box-shadow: 0px 4px 20px rgba(38, 38, 38, 0.1);
   border-radius: 8px;
   padding-top: 30px;
@@ -47,14 +47,14 @@
 .widgetTitle {
   font-weight: bold;
   font-size: 20px;
-  color: #262626;
+  color: var(--text-color, #262626);
   margin-left: 70px;
 }
 
 .widgetMainTitle {
   font-weight: bold;
   font-size: 20px;
-  color: #262626;
+  color: var(--text-color, #262626);
 }
 
 .widgetSubtitle {
@@ -140,7 +140,7 @@
     margin-bottom: 0; 
   }
   span {
-    color: #2c2c2c;
+    color: var(--text-color, #2c2c2c);
     font-size: 16px;
   }
 }

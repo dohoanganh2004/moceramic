@@ -1,7 +1,7 @@
 @import "styles/app";
 
 .cartTotal {
-  background-color: #f5f5f5;
+  background-color: var(--surface-2, #f5f5f5);
   padding: 32px;
   height: 500px;
   display: flex;

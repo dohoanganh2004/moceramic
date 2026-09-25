@@ -19,7 +19,7 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: #f9fbfd;
+  background: var(--surface-2, #f9fbfd);
   background-repeat: no-repeat;
   background-size: cover;
   z-index: 55;
@@ -85,7 +85,7 @@
   position: relative;
   margin-bottom: $grid-gutter-width;
 
-  background: $widget-bg-color;
+  background: var(--surface-bg, #{$widget-bg-color});
   border-radius: $widget-border-radius;
   box-shadow: var(--widget-shadow);
 
