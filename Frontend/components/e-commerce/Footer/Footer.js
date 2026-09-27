@@ -120,7 +120,7 @@ const Footer = () => {
                     </h5>
                     <Link href="/contact"><h6 className={`mb-3 ${s.navigationLink}`}>Help & Contact Us</h6></Link>
                     <Link href="/custom-order"><h6 className={`mb-3 ${s.navigationLink}`}>Custom Order</h6></Link>
-                    <Link href="/account"><h6 className={`mb-3 ${s.navigationLink}`}>Returns & Refunds</h6></Link>
+                    <Link href="/account/my-profile"><h6 className={`mb-3 ${s.navigationLink}`}>Returns & Refunds</h6></Link>
                     <Link href="/shop"><h6 className={`mb-3 ${s.navigationLink}`}>Online Stores</h6></Link>
                     <Link href="/page/terms"><h6 className={`mb-3 ${s.navigationLink}`}>Terms & Conditions</h6></Link>
                   </Col>

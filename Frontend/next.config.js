@@ -4,10 +4,13 @@ const withNextCircularDeps = require('next-circular-dependency')
 // Some admin/back-office pages render "/uploads/xxx.png" URLs straight from
 // the API response (not through utils/resolveAssetUrl). From the Next.js
 // origin (localhost:3000) those 404 since this server has no such route, so
-// proxy them through to the backend that actually serves the files.
-const backendOrigin = process.env.NODE_ENV === 'production'
-    ? 'https://flatlogic-ecommerce-backend.herokuapp.com'
-    : 'http://localhost:8080';
+// proxy them through to the backend that actually serves the files. This
+// rewrite runs in the Next.js server process, so in docker-compose it uses
+// the backend's internal network address (BACKEND_INTERNAL_URL).
+const backendOrigin =
+    process.env.BACKEND_INTERNAL_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    'http://localhost:8080';
 
 module.exports = withImages({
     async rewrites() {

@@ -22,6 +22,7 @@ import useWishlist from "hooks/useWishlist";
 import { emitCartUpdated } from "utils/cartEvents";
 import resolveAssetUrl from "utils/resolveAssetUrl";
 import { formatVND } from "utils/formatCurrency";
+import getDisplayPrice from "utils/productPrice";
 
 const Index = ({ products: serverSideProducts, blogPosts = [] }) => {
   const [quantity, setQuantity] = React.useState(1);
@@ -407,7 +408,7 @@ const Index = ({ products: serverSideProducts, blogPosts = [] }) => {
                         <h6 className={"fw-bold text-muted text-uppercase"}>
                           Price
                         </h6>
-                        <h6 className={"fw-bold"}>{formatVND(item.basePrice)}</h6>
+                        <h6 className={"fw-bold"}>{formatVND(getDisplayPrice(item))}</h6>
                       </div>
                     </div>
                     <div className={"d-flex mt-5"}>
@@ -505,7 +506,7 @@ const Index = ({ products: serverSideProducts, blogPosts = [] }) => {
                       </h6>
                     </a>
                   </Link>
-                  <h6 style={{ fontSize: 16 }}>{formatVND(item.basePrice)}</h6>
+                  <h6 style={{ fontSize: 16 }}>{formatVND(getDisplayPrice(item))}</h6>
                 </div>
               </div>
             </Col>

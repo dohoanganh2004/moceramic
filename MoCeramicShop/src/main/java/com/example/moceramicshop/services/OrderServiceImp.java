@@ -56,6 +56,7 @@ public class OrderServiceImp implements OrderService {
     private final ObjectMapper objectMapper;
     private final InventoryRepository inventoryRepository;
     private final PaymentService paymentService;
+    private final InventoryLockService inventoryLockService;
 
     public OrderServiceImp(OrderRepository repository,
                            OrderMapper mapper,
@@ -67,7 +68,8 @@ public class OrderServiceImp implements OrderService {
                            ObjectMapper objectMapper,
                            OrderItemRepository itemRepository,
                            InventoryRepository inventoryRepository,
-                           PaymentService paymentService) {
+                           PaymentService paymentService,
+                           InventoryLockService inventoryLockService) {
         this.repository = repository;
         this.mapper = mapper;
         this.userRepository = userRepository;
@@ -79,6 +81,7 @@ public class OrderServiceImp implements OrderService {
         this.itemRepository = itemRepository;
         this.inventoryRepository = inventoryRepository;
         this.paymentService = paymentService;
+        this.inventoryLockService = inventoryLockService;
     }
 
     @Override
@@ -140,16 +143,20 @@ public class OrderServiceImp implements OrderService {
             ProductVariant variant = productVariantRepository.findById(itemDto.getVariantId())
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy biến thể với id " + itemDto.getVariantId()));
 
-            Inventory inventory = inventoryRepository.findByVariant_Id(variant.getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Chưa thiết lập tồn kho cho biến thể id " + variant.getId()));
-            int available = inventory.getQuantityOnHand() - inventory.getQuantityReserved();
-            if (available < itemDto.getQuantity()) {
-                log.warn("Insufficient stock for variantId={}: requested={} available={}", variant.getId(), itemDto.getQuantity(), available);
-                throw new BadRequestException("Sản phẩm '" + variant.getProduct().getName() + "' không đủ tồn kho (còn " + available + ")");
-            }
-            inventory.setQuantityReserved(inventory.getQuantityReserved() + itemDto.getQuantity());
-            inventory.setUpdatedAt(Instant.now());
-            inventoryRepository.save(inventory);
+            // Serialized per-variant (Redis lock) + an atomic conditional UPDATE
+            // underneath (see InventoryRepository.reserveStock) - together these
+            // make concurrent checkouts for the same low-stock variant safe: no
+            // two requests can both pass the availability check and oversell.
+            inventoryLockService.withLock(variant.getId(), () -> {
+                int updated = inventoryRepository.reserveStock(variant.getId(), itemDto.getQuantity());
+                if (updated == 0) {
+                    Inventory inventory = inventoryRepository.findByVariant_Id(variant.getId()).orElse(null);
+                    int available = inventory == null ? 0 : inventory.getQuantityOnHand() - inventory.getQuantityReserved();
+                    log.warn("Insufficient stock for variantId={}: requested={} available={}", variant.getId(), itemDto.getQuantity(), available);
+                    throw new BadRequestException("Sản phẩm '" + variant.getProduct().getName() + "' không đủ tồn kho (còn " + available + ")");
+                }
+                return null;
+            });
 
             BigDecimal unitPrice = variant.getPrice();
             BigDecimal lineSubtotal = unitPrice.multiply(BigDecimal.valueOf(itemDto.getQuantity()));
@@ -311,11 +318,7 @@ public class OrderServiceImp implements OrderService {
         }
 
         for (OrderItem item : order.getItems()) {
-            inventoryRepository.findByVariant_Id(item.getVariant().getId()).ifPresent(inventory -> {
-                inventory.setQuantityReserved(Math.max(0, inventory.getQuantityReserved() - item.getQuantity()));
-                inventory.setUpdatedAt(Instant.now());
-                inventoryRepository.save(inventory);
-            });
+            inventoryRepository.releaseStock(item.getVariant().getId(), item.getQuantity());
         }
 
         order.setStatus(STATUS_CANCELLED);

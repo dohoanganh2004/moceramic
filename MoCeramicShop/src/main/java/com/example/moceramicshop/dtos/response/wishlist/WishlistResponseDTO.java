@@ -19,5 +19,9 @@ public class WishlistResponseDTO {
     private String productSlug;
     private String productImageUrl;
     private BigDecimal basePrice;
+    // Price of the product's default (first) variant, falling back to
+    // basePrice for products with no variants - this is what "Add to Cart"
+    // from a listing actually charges, so it's what should be displayed.
+    private BigDecimal displayPrice;
     private Instant createdAt;
 }

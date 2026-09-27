@@ -16,6 +16,8 @@ import com.example.moceramicshop.repositories.ProductRepository;
 import com.example.moceramicshop.repositories.ProductVariantRepository;
 import com.example.moceramicshop.specifications.ProductSpecification;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -81,7 +83,15 @@ public class ProductServiceImp implements ProductService {
         return productRepository.findAll(spec, pageable).map(productMapper::toResponseDTO);
     }
 
+    // Short TTL (2 min, see RedisConfig) rather than the default 10: this DTO
+    // embeds each variant's live stock counts, and order placement doesn't
+    // evict this cache (that would mean crossing into OrderServiceImp/
+    // InventoryRepository for every reservation), so a short TTL bounds how
+    // stale "in stock" can look on the product page. It's not a correctness
+    // gap - order creation re-checks real stock atomically regardless - just
+    // a display staleness window.
     @Override
+    @Cacheable(value = "products", key = "'byId:' + #id")
     public ProductResponseDTO getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm với id " + id));
@@ -120,6 +130,7 @@ public class ProductServiceImp implements ProductService {
     }
 
     @Override
+    @CacheEvict(value = "products", key = "'byId:' + #id")
     public ProductResponseDTO update(Long id, ProductRequestDTO dto) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm với id " + id));
@@ -147,6 +158,7 @@ public class ProductServiceImp implements ProductService {
     }
 
     @Override
+    @CacheEvict(value = "products", key = "'byId:' + #id")
     public void delete(Long id) {
         if (!productRepository.existsById(id)) {
             throw new ResourceNotFoundException("Không tìm thấy sản phẩm với id " + id);

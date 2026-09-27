@@ -9,6 +9,7 @@ import com.example.moceramicshop.models.Inventory;
 import com.example.moceramicshop.models.ProductVariant;
 import com.example.moceramicshop.repositories.ProductVariantRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -26,6 +27,7 @@ public class ProductVariantServiceImp implements ProductVariantService {
     }
 
     @Override
+    @CacheEvict(value = "products", key = "'byId:' + #productId")
     public ProductVariantResponseDTO update(Long productId, Long variantId, ProductVariantRequestDTO dto) {
         ProductVariant variant = getOwnedVariant(productId, variantId);
 
@@ -58,6 +60,7 @@ public class ProductVariantServiceImp implements ProductVariantService {
     }
 
     @Override
+    @CacheEvict(value = "products", key = "'byId:' + #productId")
     public void delete(Long productId, Long variantId) {
         ProductVariant variant = getOwnedVariant(productId, variantId);
         productVariantRepository.delete(variant);

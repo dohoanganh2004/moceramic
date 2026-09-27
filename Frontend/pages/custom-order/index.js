@@ -13,9 +13,16 @@ import {
 import axios from "axios";
 import { toast } from "react-toastify";
 import Head from "next/head";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import { useSelector } from "react-redux";
 import ImagePreviewGrid from "components/ImagePreviewGrid";
+import getErrorMessage from "utils/getErrorMessage";
+import { todayStr } from "utils/date";
 
 const Index = () => {
+  const currentUser = useSelector((store) => store.auth.currentUser);
+  const router = useRouter();
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
@@ -29,6 +36,10 @@ const Index = () => {
     e.preventDefault();
     if (!contactName || !contactEmail || !contactPhone || !description || !quantity) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+    if (desiredCompletionDate && desiredCompletionDate < todayStr()) {
+      toast.error("Desired completion date cannot be in the past");
       return;
     }
 
@@ -63,8 +74,13 @@ const Index = () => {
         setQuantity('1');
         setDesiredCompletionDate('');
         setFiles([]);
+        // Guest submissions aren't linked to an account, so there's nothing to
+        // show them at /custom-order/my-request - only redirect logged-in users.
+        if (currentUser) {
+          router.push("/custom-order/my-request");
+        }
       })
-      .catch(() => toast.error("Could not submit your request. Please try again."))
+      .catch((err) => toast.error(getErrorMessage(err, "Could not submit your request. Please try again.")))
       .finally(() => setSubmitting(false));
   };
 
@@ -77,11 +93,18 @@ const Index = () => {
       <Container>
         <Row className={"mb-5"} style={{ marginTop: 32 }}>
           <Col lg={8} className="mx-auto">
-            <div className="mb-4">
-              <h2 className={"fw-bold"}>Request a Custom Order</h2>
-              <h6 className={"text-muted"}>
-                Tell us what you'd like us to make, and we'll get back to you with a quote.
-              </h6>
+            <div className={"d-flex justify-content-between align-items-start mb-4"}>
+              <div>
+                <h2 className={"fw-bold"}>Request a Custom Order</h2>
+                <h6 className={"text-muted"}>
+                  Tell us what you'd like us to make, and we'll get back to you with a quote.
+                </h6>
+              </div>
+              {currentUser ? (
+                <Link href={"/custom-order/my-request"}>
+                  <a className={"text-primary fw-bold text-nowrap ml-3"}>My Requests &rarr;</a>
+                </Link>
+              ) : null}
             </div>
             <Form onSubmit={handleSubmit}>
               <FormGroup className="d-flex" style={{ gap: 16 }}>
@@ -105,7 +128,12 @@ const Index = () => {
                 </div>
                 <div className="flex-fill">
                   <Label className="fw-bold text-muted">Desired Completion Date</Label>
-                  <Input type="date" value={desiredCompletionDate} onChange={(e) => setDesiredCompletionDate(e.target.value)} />
+                  <Input
+                    type="date"
+                    min={todayStr()}
+                    value={desiredCompletionDate}
+                    onChange={(e) => setDesiredCompletionDate(e.target.value)}
+                  />
                 </div>
               </FormGroup>
               <FormGroup>

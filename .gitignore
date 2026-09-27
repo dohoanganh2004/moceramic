@@ -1,0 +1,11 @@
+# Local docker-compose secrets (copy .env.example to .env and fill in)
+.env
+
+# IDE / tooling (root-level; Frontend and MoCeramicShop each have their own)
+.idea/
+.PVS-Studio/
+.claude/
+
+# Personal QA notes / reference screenshots, not project source
+Test/
+Image/

@@ -1,8 +1,8 @@
 package com.example.moceramicshop.security;
 
 import com.example.moceramicshop.models.User;
-import com.example.moceramicshop.repositories.BlacklistedTokenRepository;
 import com.example.moceramicshop.repositories.UserRepository;
+import com.example.moceramicshop.services.TokenBlacklistService;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -23,13 +23,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
-    private final BlacklistedTokenRepository blacklistedTokenRepository;
+    private final TokenBlacklistService tokenBlacklistService;
 
     public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, UserRepository userRepository,
-                                    BlacklistedTokenRepository blacklistedTokenRepository) {
+                                    TokenBlacklistService tokenBlacklistService) {
         this.jwtTokenProvider = jwtTokenProvider;
         this.userRepository = userRepository;
-        this.blacklistedTokenRepository = blacklistedTokenRepository;
+        this.tokenBlacklistService = tokenBlacklistService;
     }
 
     @Override
@@ -39,7 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (token != null && jwtTokenProvider.validateToken(token)) {
             try {
                 boolean isAccessToken = JwtTokenProvider.TOKEN_TYPE_ACCESS.equals(jwtTokenProvider.getTokenType(token));
-                boolean isBlacklisted = blacklistedTokenRepository.existsByTokenJti(jwtTokenProvider.getJti(token));
+                boolean isBlacklisted = tokenBlacklistService.isBlacklisted(jwtTokenProvider.getJti(token));
 
                 if (isAccessToken && !isBlacklisted) {
                     Long userId = jwtTokenProvider.getUserIdFromToken(token);

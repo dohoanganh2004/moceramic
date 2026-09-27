@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import Errors from "components/admin/FormItems/error/errors";
 import getErrorMessage from "utils/getErrorMessage";
 import Router from 'next/router';
+import { getRefreshToken, setRefreshToken, clearRefreshToken } from "utils/authStorage";
 
 export const AUTH_FAILURE = "AUTH_FAILURE";
 export const LOGIN_REQUEST = "LOGIN_REQUEST";
@@ -73,7 +74,7 @@ export function logoutUser() {
     dispatch({
       type: LOGOUT_REQUEST,
     });
-    const refreshToken = typeof window !== 'undefined' && localStorage.getItem("refreshToken");
+    const refreshToken = getRefreshToken();
     try {
       if (refreshToken) {
         await axios.post("/auth/logout", { refreshToken });
@@ -82,8 +83,8 @@ export function logoutUser() {
       // best-effort: still clear local session even if the server call fails
     }
     typeof window !== 'undefined' && localStorage.removeItem("token");
-    typeof window !== 'undefined' && localStorage.removeItem("refreshToken");
     typeof window !== 'undefined' && localStorage.removeItem("user");
+    clearRefreshToken();
     axios.defaults.headers.common["Authorization"] = "";
     dispatch({
       type: LOGOUT_SUCCESS,
@@ -92,12 +93,12 @@ export function logoutUser() {
   };
 }
 
-export function receiveToken(token, refreshToken) {
+export function receiveToken(token, refreshToken, rememberMe = true) {
   return (dispatch) => {
     let user = decodeUser(token);
 
     typeof window !== 'undefined' && localStorage.setItem("token", token);
-    typeof window !== 'undefined' && localStorage.setItem("refreshToken", refreshToken);
+    setRefreshToken(refreshToken, rememberMe);
     typeof window !== 'undefined' && localStorage.setItem("user", JSON.stringify(user));
     axios.defaults.headers.common["Authorization"] = "Bearer " + token;
     dispatch({
@@ -121,7 +122,7 @@ export function loginUser(creds) {
         .post("/auth/login", { phoneNumber: creds.phoneNumber, password: creds.password })
         .then((res) => {
           const { token, refreshToken } = res.data;
-          dispatch(receiveToken(token, refreshToken));
+          dispatch(receiveToken(token, refreshToken, creds.rememberMe !== false));
           dispatch(doInit());
         })
         .catch((err) => {

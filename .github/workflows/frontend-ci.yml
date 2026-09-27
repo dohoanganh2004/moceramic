@@ -1,0 +1,44 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main, v1]
+    paths:
+      - "Frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+  pull_request:
+    branches: [main, v1]
+    paths:
+      - "Frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+
+defaults:
+  run:
+    working-directory: Frontend
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      NODE_OPTIONS: --openssl-legacy-provider
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: Frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Build
+        run: npm run build
+
+      - name: Build Docker image
+        run: docker build -t moceramic-frontend:ci --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL .

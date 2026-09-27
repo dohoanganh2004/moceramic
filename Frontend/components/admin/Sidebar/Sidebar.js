@@ -36,6 +36,7 @@ const STAFF_NAV_ITEMS = [
   { header: "Payments", link: "/admin/payments", icon: PricetagIcon, code: "payments" },
   { header: "Vouchers", link: "/admin/vouchers", icon: DownloadIcon, code: "vouchers" },
   { header: "Products", link: "/admin/products", icon: PricetagIcon, code: "products" },
+  { header: "Inventory", link: "/admin/inventory", icon: BarIcon, code: "inventory" },
   { header: "Categories", link: "/admin/categories", icon: BarIcon, code: "categories" },
   { header: "Blog", link: "/admin/blogs", icon: DownloadIcon, code: "blog" },
   { header: "Static Pages", link: "/admin/static-pages", icon: DownloadIcon, code: "static_pages" },
@@ -50,6 +51,7 @@ const CUSTOMER_NAV_ITEMS = [
   { header: "Blog", link: "/blog", icon: FileIcon },
   { header: "Cart", link: "/cart", icon: PricetagIcon },
   { header: "My Orders", link: "/order/my-order", icon: DownloadIcon },
+  { header: "Custom Orders", link: "/custom-order/my-request", icon: BarIcon },
   { header: "Wishlist", link: "/wishlist", icon: GiftIcon },
 ];
 
@@ -64,9 +66,9 @@ const GUEST_NAV_ITEMS = [
 
 // Sub-items under the collapsible "My Account" group, for every logged-in role.
 const MY_ACCOUNT_CHILDREN = [
-  { header: "Profile", link: "/my-profile", index: "my-account/profile" },
-  { header: "Address", link: "/account", index: "my-account/address" },
-  { header: "Change Password", link: "/change-password", index: "my-account/password" },
+  { header: "Profile", link: "/account/my-profile", index: "my-account/profile" },
+  { header: "Address", link: "/account/address", index: "my-account/address" },
+  { header: "Change Password", link: "/account/change-password", index: "my-account/password" },
 ];
 
 class Sidebar extends React.Component {

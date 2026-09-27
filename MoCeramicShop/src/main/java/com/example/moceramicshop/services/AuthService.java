@@ -11,4 +11,6 @@ public interface AuthService {
     LoginResponseDTO refresh(String refreshToken);
     void logout(String accessToken, String refreshToken);
     void blacklistAccessToken(String accessToken);
+    void sendPasswordResetEmail(String email);
+    void resetPassword(String token, String newPassword);
 }

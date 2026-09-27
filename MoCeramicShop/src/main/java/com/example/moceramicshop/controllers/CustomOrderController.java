@@ -1,6 +1,7 @@
 package com.example.moceramicshop.controllers;
 
 import com.example.moceramicshop.dtos.request.customorder.CustomOrderAdminUpdateRequestDTO;
+import com.example.moceramicshop.dtos.request.customorder.CustomOrderRequestDTO;
 import com.example.moceramicshop.dtos.response.customorder.CustomOrderResponseDTO;
 import com.example.moceramicshop.security.CustomUserDetails;
 import com.example.moceramicshop.security.PermissionGuard;
@@ -10,16 +11,20 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Set;
@@ -57,6 +62,25 @@ public class CustomOrderController {
     @GetMapping("/my")
     public ResponseEntity<List<CustomOrderResponseDTO>> getMyRequests(@AuthenticationPrincipal CustomUserDetails currentUser) {
         return ResponseEntity.ok(customOrderService.getMyRequests(currentUser.getUser().getId()));
+    }
+
+    @GetMapping("/my/{id}")
+    public ResponseEntity<CustomOrderResponseDTO> getMyRequestById(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        return ResponseEntity.ok(customOrderService.getOwnedById(id, currentUser.getUser().getId()));
+    }
+
+    @PutMapping(value = "/my/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CustomOrderResponseDTO> updateMyRequest(@PathVariable Long id,
+                                                                     @RequestPart("data") @Valid CustomOrderRequestDTO dto,
+                                                                     @RequestPart(value = "files", required = false) List<MultipartFile> files,
+                                                                     @AuthenticationPrincipal CustomUserDetails currentUser) {
+        return ResponseEntity.ok(customOrderService.customerUpdate(id, currentUser.getUser().getId(), dto, files));
+    }
+
+    @DeleteMapping("/my/{id}")
+    public ResponseEntity<Void> deleteMyRequest(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        customOrderService.customerDelete(id, currentUser.getUser().getId());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}")

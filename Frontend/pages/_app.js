@@ -13,6 +13,7 @@ import "styles/theme.scss";
 import { useRouter } from "next/router";
 import PageTransition from "components/PageTransition";
 import { getStoredTheme, applyTheme } from "utils/theme";
+import { getRefreshToken, rewriteRefreshToken, clearRefreshToken } from "utils/authStorage";
 
 axios.defaults.baseURL = config.baseURLApi;
 axios.defaults.headers.common["Content-Type"] = "application/json";
@@ -47,7 +48,7 @@ axios.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const refreshToken = typeof window !== "undefined" && localStorage.getItem("refreshToken");
+    const refreshToken = getRefreshToken();
     if (!refreshToken) {
       return Promise.reject(error);
     }
@@ -70,7 +71,7 @@ axios.interceptors.response.use(
       .then((res) => {
         const { token: newToken, refreshToken: newRefreshToken } = res.data;
         localStorage.setItem("token", newToken);
-        localStorage.setItem("refreshToken", newRefreshToken);
+        rewriteRefreshToken(newRefreshToken);
         axios.defaults.headers.common["Authorization"] = "Bearer " + newToken;
         resolvePending(null, newToken);
         originalRequest.headers["Authorization"] = "Bearer " + newToken;
@@ -79,8 +80,8 @@ axios.interceptors.response.use(
       .catch((refreshError) => {
         resolvePending(refreshError, null);
         localStorage.removeItem("token");
-        localStorage.removeItem("refreshToken");
         localStorage.removeItem("user");
+        clearRefreshToken();
         if (typeof window !== "undefined") {
           window.location.href = "/login";
         }

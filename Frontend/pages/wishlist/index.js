@@ -119,7 +119,7 @@ const Cart = () => {
                         </div>
                       </td>
                       <td className={"px-0 pt-4"}>
-                        <h6 className={"fw-bold mb-0"}>{formatVND(item.basePrice)}</h6>
+                        <h6 className={"fw-bold mb-0"}>{formatVND(item.displayPrice)}</h6>
                       </td>
                       <td className={"px-0 pt-4"}>
                         <Button

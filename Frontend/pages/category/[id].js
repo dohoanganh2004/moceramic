@@ -23,6 +23,7 @@ import useWishlist from "hooks/useWishlist";
 import { emitCartUpdated } from "utils/cartEvents";
 import resolveAssetUrl from "utils/resolveAssetUrl";
 import { formatVND } from "utils/formatCurrency";
+import getDisplayPrice from "utils/productPrice";
 
 let categoriesList = [];
 
@@ -328,7 +329,7 @@ const Index = ({ categoryId, categoryData }) => {
                       </h6>
                       </a>
                     </Link>
-                    <h6 style={{ fontSize: 16 }}>{formatVND(c.basePrice)}</h6>
+                    <h6 style={{ fontSize: 16 }}>{formatVND(getDisplayPrice(c))}</h6>
                   </Col>
                 );
               })}

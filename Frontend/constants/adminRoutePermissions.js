@@ -9,6 +9,7 @@ const ADMIN_ROUTE_PERMISSIONS = [
   { prefix: "/admin/custom-orders", code: "custom_orders" },
   { prefix: "/admin/payments", code: "payments" },
   { prefix: "/admin/vouchers", code: "vouchers" },
+  { prefix: "/admin/inventory", code: "inventory" },
   { prefix: "/admin/products", code: "products" },
   { prefix: "/admin/categories", code: "categories" },
   { prefix: "/admin/blogs", code: "blog" },

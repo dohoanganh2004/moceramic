@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSelector } from "react-redux";
 import { useRouter } from "next/router";
 import s from "./Order.module.scss";
+import Widget from "components/admin/Widget";
 import resolveAssetUrl from "utils/resolveAssetUrl";
 import { formatVND } from "utils/formatCurrency";
 import axios from "axios";
@@ -12,6 +13,14 @@ import Head from "next/head";
 import AddressSelector from "components/e-commerce/AddressSelector";
 
 const BUY_NOW_STORAGE_KEY = "buyNowItem";
+
+const PAYMENT_METHODS = [
+  { value: "cod", label: "Cash on Delivery", icon: "la-money-bill" },
+  { value: "bank_transfer", label: "Bank Transfer", icon: "la-university" },
+  { value: "vnpay", label: "VNPay", icon: "la-wallet" },
+  { value: "momo", label: "Momo", icon: "la-mobile" },
+  { value: "stripe", label: "Credit Card (Stripe)", icon: "la-credit-card" },
+];
 
 const Index = () => {
   const currentUser = useSelector((store) => store.auth.currentUser);
@@ -104,7 +113,7 @@ const Index = () => {
       {!currentUser ? (
         <Row>
           <Col sm={12}>
-            <section className={`${s.loginSection} py-4`}>
+            <section className={`${s.loginSection} py-5`}>
               <p className={"mb-0 mr-2"}>Please log in to place an order.</p>
               <Link href={"/login"} className={"text-primary fw-bold"}>
                 Click here to Login
@@ -115,7 +124,7 @@ const Index = () => {
       ) : !itemLoaded ? null : !item ? (
         <Row>
           <Col sm={12}>
-            <section className={"py-4"}>
+            <section className={`${s.loginSection} py-5`}>
               <p className={"mb-0 mr-2"}>No item selected to buy.</p>
               <Link href={"/shop"} className={"text-primary fw-bold"}>
                 Go back to Shop
@@ -125,19 +134,22 @@ const Index = () => {
         </Row>
       ) : (
         <>
-          <Row className={"my-5"}>
+          <Row className={"mb-4"}>
             <Col sm={12}>
-              <h3 className={"fw-bold"}>Order</h3>
-              <p>Choose a shipping address and review your order below.</p>
+              <h3 className={"fw-bold mb-1"}>Checkout</h3>
+              <p className={"text-muted mb-0"}>Choose a shipping address and review your order below.</p>
             </Col>
           </Row>
-          <Row className={"mt-3"}>
-            <Col lg={7} xs={12}>
-              <section className={s.paymentInfo}>
-                <h3 className={"fw-bold mb-4"}>Order Summary</h3>
-                <div className={"d-flex justify-content-between align-items-center mb-3"}>
-                  <div className={"d-flex align-items-center"}>
-                    <img src={resolveAssetUrl(item.imageUrl)} width={56} className={"mr-3"} alt={item.productName} />
+          <Row>
+            <Col lg={7} xs={12} className={"mb-4 mb-lg-0"}>
+              <Widget title={<h5 className={"fw-bold mb-0"}>Order Summary</h5>}>
+                <div className={s.productRow}>
+                  <div className={"d-flex align-items-center"} style={{ gap: 16 }}>
+                    <img
+                      src={resolveAssetUrl(item.imageUrl)}
+                      className={s.productImg}
+                      alt={item.productName}
+                    />
                     <div>
                       <p className={"mb-0 fw-bold"}>{item.productName}</p>
                       <p className={"mb-0 text-muted"} style={{ fontSize: 13 }}>
@@ -145,49 +157,37 @@ const Index = () => {
                       </p>
                     </div>
                   </div>
-                  <p className={"mb-0 fw-bold"}>{formatVND(lineTotal)}</p>
+                  <p className={"mb-0 fw-bold text-nowrap"}>{formatVND(lineTotal)}</p>
                 </div>
-                <div className={"d-flex justify-content-between align-items-center mb-3"}>
+
+                <div className={s.qtyRow}>
                   <p className={"mb-0 fw-bold"}>Quantity</p>
-                  <div
-                    className={"d-flex align-items-center"}
-                    style={{ border: "1px solid #D9D9D9", borderRadius: 6 }}
-                  >
-                    <Button
-                      className={"bg-transparent border-0 fw-bold"}
-                      style={{ width: 36, height: 36 }}
-                      onClick={() => changeQuantity(-1)}
-                    >
+                  <div className={s.qtyControl}>
+                    <button type="button" className={s.qtyBtn} onClick={() => changeQuantity(-1)}>
                       -
-                    </Button>
-                    <p className={"fw-bold mb-0"} style={{ minWidth: 24, textAlign: "center" }}>
-                      {item.quantity}
-                    </p>
-                    <Button
-                      className={"bg-transparent border-0 fw-bold"}
-                      style={{ width: 36, height: 36 }}
-                      onClick={() => changeQuantity(1)}
-                    >
+                    </button>
+                    <p className={s.qtyValue}>{item.quantity}</p>
+                    <button type="button" className={s.qtyBtn} onClick={() => changeQuantity(1)}>
                       +
-                    </Button>
+                    </button>
                   </div>
                 </div>
-                <hr />
-                <FormGroup>
-                  <Label className="fw-bold">Payment Method</Label>
-                  <Input
-                    type="select"
-                    className={s.paymentSelect}
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                  >
-                    <option value="cod">Cash on Delivery (COD)</option>
-                    <option value="bank_transfer">Bank Transfer</option>
-                    <option value="vnpay">VNPay</option>
-                    <option value="momo">Momo</option>
-                    <option value="stripe">Credit Card (Stripe)</option>
-                  </Input>
-                </FormGroup>
+
+                <span className={s.sectionLabel}>Payment Method</span>
+                <div className={s.paymentGrid}>
+                  {PAYMENT_METHODS.map((m) => (
+                    <button
+                      type="button"
+                      key={m.value}
+                      className={`${s.paymentOption} ${paymentMethod === m.value ? s.paymentOptionActive : ""}`}
+                      onClick={() => setPaymentMethod(m.value)}
+                    >
+                      <i className={`la ${m.icon}`} />
+                      <span>{m.label}</span>
+                    </button>
+                  ))}
+                </div>
+
                 <FormGroup>
                   <Label className="fw-bold">Voucher Code</Label>
                   <Input
@@ -196,40 +196,56 @@ const Index = () => {
                     placeholder={"Enter a voucher code (optional)"}
                   />
                 </FormGroup>
-                <div className={"d-flex justify-content-between mb-2"}>
-                  <p className={"mb-0 text-muted"}>Subtotal</p>
-                  <p className={"mb-0 fw-bold"}>{formatVND(lineTotal)}</p>
+
+                <div className={s.summaryTotals}>
+                  <div className={"d-flex justify-content-between"}>
+                    <p className={"mb-0 text-muted"}>Subtotal</p>
+                    <p className={"mb-0"}>{formatVND(lineTotal)}</p>
+                  </div>
+                  {voucherCode ? (
+                    <div className={"d-flex justify-content-between mt-1"}>
+                      <p className={"mb-0 text-muted"}>Voucher</p>
+                      <p className={"mb-0 text-muted"} style={{ fontSize: 13 }}>Applied at checkout</p>
+                    </div>
+                  ) : null}
+                  <div className={s.totalRow}>
+                    <span>Total</span>
+                    <span className={"text-primary"}>{formatVND(lineTotal)}</span>
+                  </div>
                 </div>
+
                 <Button
                   color={"primary"}
-                  className={"text-uppercase mt-3 fw-bold w-100"}
+                  className={"text-uppercase mt-4 fw-bold w-100"}
                   onClick={placeOrder}
                   disabled={placing}
                 >
                   {placing ? "Placing Order..." : "Place Order"}
                 </Button>
-              </section>
+              </Widget>
             </Col>
             <Col lg={5} xs={12}>
-              <AddressSelector
-                addresses={addresses}
-                selectedAddressId={selectedAddressId}
-                onSelect={setSelectedAddressId}
-                onAddressAdded={(newAddress) => {
-                  fetchAddresses();
-                  setSelectedAddressId(newAddress.id);
-                }}
-              />
+              <Widget className={"mb-4"}>
+                <AddressSelector
+                  addresses={addresses}
+                  selectedAddressId={selectedAddressId}
+                  onSelect={setSelectedAddressId}
+                  onAddressAdded={(newAddress) => {
+                    fetchAddresses();
+                    setSelectedAddressId(newAddress.id);
+                  }}
+                />
+              </Widget>
 
-              <FormGroup className={"mt-4"}>
-                <Label className="fw-bold">Order Note</Label>
+              <Widget title={<h5 className={"fw-bold mb-0"}>Order Note</h5>}>
                 <Input
                   type="textarea"
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder={"Any notes for your order (optional)"}
+                  style={{ height: 100 }}
                 />
-              </FormGroup>
+              </Widget>
             </Col>
           </Row>
         </>

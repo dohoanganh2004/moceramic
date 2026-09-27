@@ -4,6 +4,7 @@ import com.example.moceramicshop.dtos.request.category.CategoryRequestDTO;
 import com.example.moceramicshop.dtos.response.category.CategoryResponseDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -11,8 +12,8 @@ public interface CategoryService {
     List<CategoryResponseDTO> getAllCategories();
     Page<CategoryResponseDTO> search(String search, Long parentId, Pageable pageable);
     CategoryResponseDTO getCategoryById(Long id);
-    CategoryResponseDTO create(CategoryRequestDTO dto, org.springframework.web.multipart.MultipartFile image);
-    CategoryResponseDTO update(Long id, CategoryRequestDTO dto, org.springframework.web.multipart.MultipartFile image);
+    CategoryResponseDTO create(CategoryRequestDTO dto, MultipartFile image);
+    CategoryResponseDTO update(Long id, CategoryRequestDTO dto, MultipartFile image);
     void delete(Long id);
 
     List<CategoryResponseDTO> getRootCategories();

@@ -1,0 +1,7 @@
+target/
+uploads/
+secrets.properties
+*.log
+.idea/
+.mvn/wrapper/maven-wrapper.jar.sha256
+.git

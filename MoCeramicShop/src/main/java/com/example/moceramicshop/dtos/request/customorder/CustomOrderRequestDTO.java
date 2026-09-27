@@ -1,6 +1,7 @@
 package com.example.moceramicshop.dtos.request.customorder;
 
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -31,5 +32,6 @@ public class CustomOrderRequestDTO {
     @Positive(message = "Quantity must be greater than 0")
     private Integer quantity;
 
+    @FutureOrPresent(message = "Desired completion date cannot be in the past")
     private LocalDate desiredCompletionDate;
 }

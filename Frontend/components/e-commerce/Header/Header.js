@@ -255,7 +255,7 @@ class Header extends React.Component {
                         </ActiveLink>
                       </DropdownItem>
                       <DropdownItem className={s.dropdownMenuItem}>
-                        <ActiveLink href={"/account"}>
+                        <ActiveLink href={"/account/my-profile"}>
                           <a>Account</a>
                         </ActiveLink>
                       </DropdownItem>
@@ -334,7 +334,7 @@ class Header extends React.Component {
                               padding: "8px 0",
                             }}
                           >
-                            <Link href={"/account"}>
+                            <Link href={"/account/my-profile"}>
                               <a
                                 className={"d-block px-3 py-2 text-dark text-decoration-none"}
                                 onClick={this.closeAccountMenu}
@@ -342,7 +342,7 @@ class Header extends React.Component {
                                 My Profile
                               </a>
                             </Link>
-                            <Link href={"/change-password"}>
+                            <Link href={"/account/change-password"}>
                               <a
                                 className={"d-block px-3 py-2 text-dark text-decoration-none"}
                                 onClick={this.closeAccountMenu}

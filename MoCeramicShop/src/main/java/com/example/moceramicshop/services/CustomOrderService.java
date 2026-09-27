@@ -16,5 +16,9 @@ public interface CustomOrderService {
     CustomOrderResponseDTO getById(Long id);
     CustomOrderResponseDTO getOwnedById(Long id, Long userId);
     CustomOrderResponseDTO adminUpdate(Long id, CustomOrderAdminUpdateRequestDTO dto);
+    // Customer self-service on their own request - only while status is still
+    // "requested", i.e. before staff has started acting on it.
+    CustomOrderResponseDTO customerUpdate(Long id, Long userId, CustomOrderRequestDTO dto, List<MultipartFile> newFiles);
+    void customerDelete(Long id, Long userId);
     void delete(Long id);
 }

@@ -50,6 +50,8 @@ const Id = ({ product }) => {
   );
   const [quantity, setQuantity] = React.useState(1);
   const [fetching, setFetching] = React.useState(true);
+  const [activeImageIndex, setActiveImageIndex] = React.useState(0);
+  const thumbStripRef = React.useRef(null);
   const router = useRouter();
 
   React.useEffect(() => {
@@ -57,6 +59,7 @@ const Id = ({ product }) => {
       setFetching(false);
       return;
     }
+    setActiveImageIndex(0);
     axios
       .get(`/products/${product.id}/reviews`)
       .then((res) => setReviews(res.data || []))
@@ -98,7 +101,13 @@ const Id = ({ product }) => {
           return (a.sortOrder || 0) - (b.sortOrder || 0);
         })
       : [];
-  const mainImage = resolveAssetUrl(images[0] && images[0].imageUrl);
+  const activeImage = images[activeImageIndex] || images[0];
+  const mainImage = resolveAssetUrl(activeImage && activeImage.imageUrl);
+  const scrollThumbs = (direction) => {
+    if (thumbStripRef.current) {
+      thumbStripRef.current.scrollBy({ left: direction * 176, behavior: "smooth" });
+    }
+  };
   const variants = product.variants || [];
   const selectedVariant = variants.find((v) => v.id === selectedVariantId);
   const availableQty = selectedVariant
@@ -226,9 +235,10 @@ const Id = ({ product }) => {
           </div>
         ) : (
           <Row className={"mb-5"} style={{ marginTop: 32 }}>
-            <Col xs={12} lg={images.length > 1 ? 7 : 6} className={"d-flex"}>
+            <Col xs={12} lg={6} className={"d-flex flex-column"}>
               {mainImage ? (
                 <ReactImageMagnify
+                  key={(activeImage && activeImage.id) || activeImageIndex}
                   {...{
                     smallImage: {
                       alt: product.name,
@@ -241,26 +251,47 @@ const Id = ({ product }) => {
                       height: 1200,
                     },
                   }}
-                  className={`${images.length > 1 && 'mr-3'}`}
                   enlargedImagePosition={"over"}
                 />
               ) : (
                 <div style={{ width: "100%", height: 400, background: "#f2f2f2" }} />
               )}
               {images.length > 1 ? (
-                <div
-                  className={`d-flex flex-column h-100 justify-content-between ${s.dMdNone}`}
-                  style={{ width: 160 }}
-                >
-                  {images.slice(1, 4).map((img, i) => (
-                    <img key={img.id || i} src={resolveAssetUrl(img.imageUrl)} width={160} alt={product.name} />
-                  ))}
+                <div className={`d-flex align-items-center mt-3 ${s.thumbRow}`}>
+                  <button
+                    type="button"
+                    className={s.thumbNav}
+                    aria-label="Previous images"
+                    onClick={() => scrollThumbs(-1)}
+                  >
+                    <i className="la la-angle-left" />
+                  </button>
+                  <div className={s.thumbStrip} ref={thumbStripRef}>
+                    {images.map((img, i) => (
+                      <button
+                        key={img.id || i}
+                        type="button"
+                        className={`${s.thumb} ${i === activeImageIndex ? s.thumbActive : ""}`}
+                        onClick={() => setActiveImageIndex(i)}
+                      >
+                        <img src={resolveAssetUrl(img.imageUrl)} alt={product.name} />
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className={s.thumbNav}
+                    aria-label="Next images"
+                    onClick={() => scrollThumbs(1)}
+                  >
+                    <i className="la la-angle-right" />
+                  </button>
                 </div>
               ) : null}
             </Col>
             <Col
               xs={12}
-              lg={images.length > 1 ? 5 : 6}
+              lg={6}
               className={"d-flex flex-column justify-content-between"}
             >
               <div className={"d-flex flex-column justify-content-between"} style={{ height: 320 }}>

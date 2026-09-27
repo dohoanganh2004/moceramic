@@ -9,24 +9,30 @@ import com.example.moceramicshop.exceptions.ConflictException;
 import com.example.moceramicshop.exceptions.ResourceNotFoundException;
 import com.example.moceramicshop.exceptions.UnauthorizedException;
 import com.example.moceramicshop.mappers.UserMapper;
-import com.example.moceramicshop.models.BlacklistedToken;
 import com.example.moceramicshop.models.Role;
 import com.example.moceramicshop.models.User;
-import com.example.moceramicshop.repositories.BlacklistedTokenRepository;
 import com.example.moceramicshop.repositories.RolePermissionRepository;
 import com.example.moceramicshop.repositories.RoleRepository;
 import com.example.moceramicshop.repositories.UserRepository;
 import com.example.moceramicshop.security.CustomUserDetails;
 import com.example.moceramicshop.security.JwtTokenProvider;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Base64;
 import java.util.List;
 
 import static com.example.moceramicshop.security.JwtTokenProvider.TOKEN_TYPE_ACCESS;
@@ -41,25 +47,32 @@ public class AuthServiceImp implements AuthService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final RolePermissionRepository rolePermissionRepository;
-    private final BlacklistedTokenRepository blacklistedTokenRepository;
+    private final TokenBlacklistService tokenBlacklistService;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
+    private final EmailService emailService;
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
+    private static final int RESET_TOKEN_VALID_HOURS = 1;
 
     public AuthServiceImp(UserRepository userRepository, RoleRepository roleRepository,
                            RolePermissionRepository rolePermissionRepository,
-                           BlacklistedTokenRepository blacklistedTokenRepository, PasswordEncoder passwordEncoder,
+                           TokenBlacklistService tokenBlacklistService, PasswordEncoder passwordEncoder,
                            UserMapper userMapper, JwtTokenProvider jwtTokenProvider,
-                           AuthenticationManager authenticationManager) {
+                           AuthenticationManager authenticationManager, EmailService emailService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.rolePermissionRepository = rolePermissionRepository;
-        this.blacklistedTokenRepository = blacklistedTokenRepository;
+        this.tokenBlacklistService = tokenBlacklistService;
         this.passwordEncoder = passwordEncoder;
         this.userMapper = userMapper;
         this.jwtTokenProvider = jwtTokenProvider;
         this.authenticationManager = authenticationManager;
+        this.emailService = emailService;
     }
 
     private List<String> getPermissionCodes(Integer roleId) {
@@ -135,7 +148,7 @@ public class AuthServiceImp implements AuthService {
         if (!TOKEN_TYPE_REFRESH.equals(jwtTokenProvider.getTokenType(refreshToken))) {
             throw new UnauthorizedException("Token này không phải refresh token");
         }
-        if (blacklistedTokenRepository.existsByTokenJti(jwtTokenProvider.getJti(refreshToken))) {
+        if (tokenBlacklistService.isBlacklisted(jwtTokenProvider.getJti(refreshToken))) {
             log.warn("Attempt to use blacklisted refresh token jti={}", jwtTokenProvider.getJti(refreshToken));
             throw new UnauthorizedException("Refresh token đã bị thu hồi");
         }
@@ -169,23 +182,71 @@ public class AuthServiceImp implements AuthService {
             return;
         }
         String jti = jwtTokenProvider.getJti(token);
-        if (blacklistedTokenRepository.existsByTokenJti(jti)) {
+        if (tokenBlacklistService.isBlacklisted(jti)) {
             return;
         }
+        tokenBlacklistService.blacklist(jti, jwtTokenProvider.getExpirationDate(token).toInstant());
+    }
 
-        Long userId = jwtTokenProvider.getUserIdFromToken(token);
-        User user = userRepository.findById(userId).orElse(null);
+    @Override
+    @Transactional
+    public void sendPasswordResetEmail(String email) {
+        User user = userRepository.getUserByEmail(email);
         if (user == null) {
+            // Don't reveal whether an email is registered - respond the same
+            // either way and just skip actually sending anything.
+            log.info("Password reset requested for unknown email={}", email);
             return;
         }
 
-        BlacklistedToken blacklistedToken = new BlacklistedToken();
-        blacklistedToken.setTokenJti(jti);
-        blacklistedToken.setUser(user);
-        blacklistedToken.setTokenType(expectedType);
-        blacklistedToken.setReason("logout");
-        blacklistedToken.setExpiresAt(jwtTokenProvider.getExpirationDate(token).toInstant());
-        blacklistedToken.setBlacklistedAt(Instant.now());
-        blacklistedTokenRepository.save(blacklistedToken);
+        String rawToken = generateRawToken();
+        user.setResetTokenHash(sha256Hex(rawToken));
+        user.setResetTokenExpiresAt(Instant.now().plus(RESET_TOKEN_VALID_HOURS, ChronoUnit.HOURS));
+        userRepository.save(user);
+
+        String resetLink = frontendUrl + "/reset?token=" + rawToken;
+        String html = "<p>Hi " + user.getFullName() + ",</p>"
+                + "<p>We received a request to reset your MoCeramic password. This link expires in "
+                + RESET_TOKEN_VALID_HOURS + " hour.</p>"
+                + "<p><a href=\"" + resetLink + "\">Reset your password</a></p>"
+                + "<p>If you didn't request this, you can safely ignore this email.</p>";
+        emailService.send(user.getEmail(), "Reset your MoCeramic password", html);
+        log.info("Password reset email sent for userId={}", user.getId());
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        User user = userRepository.findByResetTokenHash(sha256Hex(token))
+                .orElseThrow(() -> new BadRequestException("This reset link is invalid or has expired"));
+        if (user.getResetTokenExpiresAt() == null || user.getResetTokenExpiresAt().isBefore(Instant.now())) {
+            throw new BadRequestException("This reset link is invalid or has expired");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setResetTokenHash(null);
+        user.setResetTokenExpiresAt(null);
+        userRepository.save(user);
+        log.info("Password reset completed for userId={}", user.getId());
+    }
+
+    private String generateRawToken() {
+        byte[] bytes = new byte[32];
+        new SecureRandom().nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private String sha256Hex(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(hash.length * 2);
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
     }
 }

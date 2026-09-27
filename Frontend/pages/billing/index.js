@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useSelector } from "react-redux";
 import { useRouter } from "next/router";
 import s from "./Billing.module.scss";
+import Widget from "components/admin/Widget";
 import resolveAssetUrl from "utils/resolveAssetUrl";
 import { formatVND } from "utils/formatCurrency";
 import axios from "axios";
@@ -24,8 +25,8 @@ import Head from "next/head";
 import AddressSelector from "components/e-commerce/AddressSelector";
 
 const PAYMENT_METHODS = [
-  { value: "cod", label: "Cash on Delivery (COD)", description: "Pay with cash when your order arrives." },
-  { value: "bank_transfer", label: "Bank Transfer", description: "Transfer the total amount to our bank account." },
+  { value: "cod", label: "Cash on Delivery (COD)", description: "Pay with cash when your order arrives.", icon: "la-money-bill" },
+  { value: "bank_transfer", label: "Bank Transfer", description: "Transfer the total amount to our bank account.", icon: "la-university" },
 ];
 
 const BANK_TRANSFER_INFO = {
@@ -142,7 +143,7 @@ const Index = () => {
       {!currentUser ? (
         <Row>
           <Col sm={12}>
-            <section className={`${s.loginSection} py-4`}>
+            <section className={`${s.loginSection} py-5`}>
               <p className={"mb-0 mr-2"}>Please log in to check out.</p>
               <Link href={"/login"} className={"text-primary fw-bold"}>
                 Click here to Login
@@ -152,57 +153,52 @@ const Index = () => {
         </Row>
       ) : (
         <>
-          <Row className={"my-5"}>
+          <Row className={"mb-4"}>
             <Col sm={12}>
-              <h3 className={"fw-bold"}>Checkout</h3>
-              <p>Choose a shipping address and review your order below.</p>
+              <h3 className={"fw-bold mb-1"}>Checkout</h3>
+              <p className={"text-muted mb-0"}>Choose a shipping address and review your order below.</p>
             </Col>
           </Row>
-          <Row className={"mt-3"}>
-            <Col lg={7} xs={12}>
-              <AddressSelector
-                addresses={addresses}
-                selectedAddressId={selectedAddressId}
-                onSelect={setSelectedAddressId}
-                onAddressAdded={(newAddress) => {
-                  fetchAddresses();
-                  setSelectedAddressId(newAddress.id);
-                }}
-              />
-
-              <FormGroup className={"mt-4"}>
-                <Label className="fw-bold">Order Note</Label>
-                <Input
-                  type="textarea"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder={"Any notes for your order (optional)"}
-                />
-              </FormGroup>
-            </Col>
-            <Col lg={5} xs={12}>
-              <section className={s.paymentInfo}>
-                <h3 className={"fw-bold mb-4"}>Order Summary</h3>
+          <Row>
+            <Col lg={7} xs={12} className={"mb-4 mb-lg-0"}>
+              <Widget title={<h5 className={"fw-bold mb-0"}>Order Summary</h5>}>
                 {!cart || checkoutItems.length === 0 ? (
-                  <p className={"text-muted"}>Your cart is empty.</p>
+                  <p className={"text-muted mb-0"}>Your cart is empty.</p>
                 ) : (
                   <>
-                    {checkoutItems.map((item) => (
-                      <div key={item.id} className={"d-flex justify-content-between align-items-center mb-3"}>
-                        <div className={"d-flex align-items-center"}>
-                          <img src={resolveAssetUrl(item.imageUrl)} width={56} className={"mr-3"} alt={item.productName} />
-                          <div>
-                            <p className={"mb-0 fw-bold"}>{item.productName}</p>
-                            <p className={"mb-0 text-muted"} style={{ fontSize: 13 }}>
-                              {item.variantSnapshot} × {item.quantity}
-                            </p>
+                    <div className={s.itemsList}>
+                      {checkoutItems.map((item) => (
+                        <div key={item.id} className={s.itemRow}>
+                          <div className={"d-flex align-items-center"} style={{ gap: 14 }}>
+                            <img src={resolveAssetUrl(item.imageUrl)} className={s.itemImg} alt={item.productName} />
+                            <div>
+                              <p className={"mb-0 fw-bold"}>{item.productName}</p>
+                              <p className={"mb-0 text-muted"} style={{ fontSize: 13 }}>
+                                {item.variantSnapshot} &times; {item.quantity}
+                              </p>
+                            </div>
                           </div>
+                          <p className={"mb-0 fw-bold text-nowrap"}>{formatVND(item.lineTotal)}</p>
                         </div>
-                        <p className={"mb-0 fw-bold"}>{formatVND(item.lineTotal)}</p>
+                      ))}
+                    </div>
+
+                    <span className={s.sectionLabel}>Payment Method</span>
+                    {PAYMENT_METHODS.map((pm) => (
+                      <div
+                        key={pm.value}
+                        className={`${s.paymentOption} ${paymentMethod === pm.value ? s.paymentOptionActive : ""}`}
+                        onClick={() => setPaymentMethod(pm.value)}
+                      >
+                        <i className={`la ${pm.icon}`} />
+                        <div>
+                          <h6 className={"fw-bold mb-0"}>{pm.label}</h6>
+                          <p className={"text-muted mb-0"} style={{ fontSize: 13 }}>{pm.description}</p>
+                        </div>
                       </div>
                     ))}
-                    <hr />
-                    <FormGroup>
+
+                    <FormGroup className={"mt-3"}>
                       <Label className="fw-bold">Voucher Code</Label>
                       <Input
                         value={voucherCode}
@@ -210,41 +206,27 @@ const Index = () => {
                         placeholder={"Enter a voucher code (optional)"}
                       />
                     </FormGroup>
-                    <div className={"d-flex justify-content-between mb-2"}>
-                      <p className={"mb-0 text-muted"}>Subtotal</p>
-                      <p className={"mb-0 fw-bold"}>{formatVND(checkoutSubtotal)}</p>
-                    </div>
 
-                    <FormGroup className={"mt-4"}>
-                      <Label className="fw-bold">Payment Method</Label>
-                      {PAYMENT_METHODS.map((pm) => (
-                        <div
-                          key={pm.value}
-                          className={"d-flex align-items-start mb-2 p-3"}
-                          style={{
-                            border: paymentMethod === pm.value ? "2px solid #bd744c" : "1px solid #D9D9D9",
-                            borderRadius: 6,
-                            cursor: "pointer",
-                          }}
-                          onClick={() => setPaymentMethod(pm.value)}
-                        >
-                          <Input
-                            type="radio"
-                            checked={paymentMethod === pm.value}
-                            onChange={() => setPaymentMethod(pm.value)}
-                            className={"mr-3 mt-1"}
-                          />
-                          <div>
-                            <h6 className={"fw-bold mb-0"}>{pm.label}</h6>
-                            <p className={"text-muted mb-0"} style={{ fontSize: 13 }}>{pm.description}</p>
-                          </div>
+                    <div className={s.summaryTotals}>
+                      <div className={"d-flex justify-content-between"}>
+                        <p className={"mb-0 text-muted"}>Subtotal</p>
+                        <p className={"mb-0"}>{formatVND(checkoutSubtotal)}</p>
+                      </div>
+                      {voucherCode ? (
+                        <div className={"d-flex justify-content-between mt-1"}>
+                          <p className={"mb-0 text-muted"}>Voucher</p>
+                          <p className={"mb-0 text-muted"} style={{ fontSize: 13 }}>Applied at checkout</p>
                         </div>
-                      ))}
-                    </FormGroup>
+                      ) : null}
+                      <div className={s.totalRow}>
+                        <span>Total</span>
+                        <span className={"text-primary"}>{formatVND(checkoutSubtotal)}</span>
+                      </div>
+                    </div>
 
                     <Button
                       color={"primary"}
-                      className={`${s.checkOutBtn} text-uppercase mt-3 fw-bold w-100`}
+                      className={"text-uppercase mt-4 fw-bold w-100"}
                       onClick={placeOrder}
                       disabled={placing}
                     >
@@ -252,7 +234,30 @@ const Index = () => {
                     </Button>
                   </>
                 )}
-              </section>
+              </Widget>
+            </Col>
+            <Col lg={5} xs={12}>
+              <Widget className={"mb-4"}>
+                <AddressSelector
+                  addresses={addresses}
+                  selectedAddressId={selectedAddressId}
+                  onSelect={setSelectedAddressId}
+                  onAddressAdded={(newAddress) => {
+                    fetchAddresses();
+                    setSelectedAddressId(newAddress.id);
+                  }}
+                />
+              </Widget>
+
+              <Widget title={<h5 className={"fw-bold mb-0"}>Order Note</h5>}>
+                <Input
+                  type="textarea"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder={"Any notes for your order (optional)"}
+                  style={{ height: 100 }}
+                />
+              </Widget>
             </Col>
           </Row>
         </>
@@ -267,11 +272,11 @@ const Index = () => {
                 Your order <strong>{placedOrder.orderCode}</strong> has been placed. Please transfer{" "}
                 <strong>{formatVND(placedOrder.totalAmount)}</strong> using the details below, using your order code as the transfer note.
               </p>
-              <div className={"p-3"} style={{ background: "#f8f8f8", borderRadius: 6 }}>
-                <p className={"mb-1"}><strong>Bank:</strong> {BANK_TRANSFER_INFO.bankName}</p>
-                <p className={"mb-1"}><strong>Account Name:</strong> {BANK_TRANSFER_INFO.accountName}</p>
-                <p className={"mb-1"}><strong>Account Number:</strong> {BANK_TRANSFER_INFO.accountNumber}</p>
-                <p className={"mb-0"}><strong>Transfer Note:</strong> {placedOrder.orderCode}</p>
+              <div className={s.bankInfo}>
+                <p><strong>Bank:</strong> {BANK_TRANSFER_INFO.bankName}</p>
+                <p><strong>Account Name:</strong> {BANK_TRANSFER_INFO.accountName}</p>
+                <p><strong>Account Number:</strong> {BANK_TRANSFER_INFO.accountNumber}</p>
+                <p><strong>Transfer Note:</strong> {placedOrder.orderCode}</p>
               </div>
               <p className={"text-muted mt-3 mb-0"} style={{ fontSize: 13 }}>
                 We will confirm your payment and start processing your order once the transfer is received.

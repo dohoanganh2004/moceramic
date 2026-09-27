@@ -3,6 +3,7 @@ package com.example.moceramicshop.services;
 import com.example.moceramicshop.dtos.request.customorder.CustomOrderAdminUpdateRequestDTO;
 import com.example.moceramicshop.dtos.request.customorder.CustomOrderRequestDTO;
 import com.example.moceramicshop.dtos.response.customorder.CustomOrderResponseDTO;
+import com.example.moceramicshop.exceptions.ConflictException;
 import com.example.moceramicshop.exceptions.ForbiddenException;
 import com.example.moceramicshop.exceptions.ResourceNotFoundException;
 import com.example.moceramicshop.mappers.CustomOrderMapper;
@@ -116,6 +117,65 @@ public class CustomOrderServiceImp implements CustomOrderService {
         customOrder.setUpdatedAt(Instant.now());
         log.info("Updated custom order id={} status={}", id, dto.getStatus());
         return customOrderMapper.toResponseDTO(customOrderRepository.saveAndFlush(customOrder));
+    }
+
+    @Override
+    public CustomOrderResponseDTO customerUpdate(Long id, Long userId, CustomOrderRequestDTO dto, List<MultipartFile> newFiles) {
+        CustomOrder customOrder = findOwnedOrThrow(id, userId);
+        requireStillEditable(customOrder);
+
+        customOrder.setContactName(dto.getContactName());
+        customOrder.setContactEmail(dto.getContactEmail());
+        customOrder.setContactPhone(dto.getContactPhone());
+        customOrder.setDescription(dto.getDescription());
+        customOrder.setQuantity(dto.getQuantity());
+        customOrder.setDesiredCompletionDate(dto.getDesiredCompletionDate());
+        customOrder.setUpdatedAt(Instant.now());
+
+        if (newFiles != null) {
+            for (MultipartFile file : newFiles) {
+                if (file == null || file.isEmpty()) {
+                    continue;
+                }
+                CustomOrderAttachment attachment = new CustomOrderAttachment();
+                attachment.setFileUrl(fileStorageService.store(file));
+                attachment.setCreatedAt(Instant.now());
+                attachment.setCustomOrder(customOrder);
+                customOrder.getAttachments().add(attachment);
+            }
+        }
+
+        log.info("Customer userId={} updated their own custom order id={}", userId, id);
+        return customOrderMapper.toResponseDTO(customOrderRepository.saveAndFlush(customOrder));
+    }
+
+    @Override
+    public void customerDelete(Long id, Long userId) {
+        CustomOrder customOrder = findOwnedOrThrow(id, userId);
+        requireStillEditable(customOrder);
+
+        for (CustomOrderAttachment attachment : customOrder.getAttachments()) {
+            fileStorageService.delete(attachment.getFileUrl());
+        }
+        customOrderRepository.deleteById(id);
+        log.info("Customer userId={} deleted their own custom order id={}", userId, id);
+    }
+
+    private CustomOrder findOwnedOrThrow(Long id, Long userId) {
+        CustomOrder customOrder = findOrThrow(id);
+        if (customOrder.getUser() == null || !customOrder.getUser().getId().equals(userId)) {
+            throw new ForbiddenException("Bạn không có quyền chỉnh sửa đơn đặt hàng này");
+        }
+        return customOrder;
+    }
+
+    // Once staff has started acting on a request (reviewing, quoted, etc.) it
+    // can no longer be self-edited or removed - that would clash with work
+    // already in progress. The customer can still see it, just not change it.
+    private void requireStillEditable(CustomOrder customOrder) {
+        if (!STATUS_REQUESTED.equals(customOrder.getStatus())) {
+            throw new ConflictException("This request is already being processed and can no longer be edited or cancelled");
+        }
     }
 
     @Override

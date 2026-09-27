@@ -44,6 +44,37 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+        <!-- Needed by RedisConfig's cache JSON serializer to handle java.time
+             types (e.g. Instant) in the cached DTOs; not pulled in transitively
+             by spring-boot-starter-webmvc the way it would be by the classic
+             spring-boot-starter-web. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+        <!-- Plain client only (not redisson-spring-boot-starter): that starter's
+             own autoconfiguration references org.springframework.boot.autoconfigure
+             .data.redis.RedisProperties, which doesn't exist at that package in
+             this Spring Boot version, so it fails to even start. RedissonClient
+             is wired manually in config.RedisConfig instead, which is all this
+             app needs from it. -->
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+            <version>3.50.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
         <dependency>

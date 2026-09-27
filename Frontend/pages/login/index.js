@@ -43,6 +43,7 @@ class Login extends React.Component {
     this.state = {
       phoneNumber: "",
       password: "",
+      rememberMe: true,
     };
 
     this.doLogin = this.doLogin.bind(this);
@@ -64,7 +65,11 @@ class Login extends React.Component {
   doLogin(e) {
     e.preventDefault();
     this.props.dispatch(
-      loginUser({ phoneNumber: this.state.phoneNumber, password: this.state.password })
+      loginUser({
+        phoneNumber: this.state.phoneNumber,
+        password: this.state.password,
+        rememberMe: this.state.rememberMe,
+      })
     );
   }
 
@@ -161,6 +166,16 @@ class Login extends React.Component {
                         required
                       />
                       <img className={s.viewPassword} src={this.state.viewPassword ? eye : eyeOff} onClick={() => this.setState({ viewPassword: !this.state.viewPassword })} />
+                    </FormGroup>
+                    <FormGroup check>
+                      <Label check>
+                        <Input
+                          type="checkbox"
+                          checked={this.state.rememberMe}
+                          onChange={() => this.setState((prev) => ({ rememberMe: !prev.rememberMe }))}
+                        />{" "}
+                        Remember me
+                      </Label>
                     </FormGroup>
                     <div
                       className={

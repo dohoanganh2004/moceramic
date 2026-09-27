@@ -10,6 +10,8 @@ import com.example.moceramicshop.models.Category;
 import com.example.moceramicshop.repositories.CategoryRepository;
 import com.example.moceramicshop.specifications.CategorySpecification;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -34,7 +36,13 @@ public class CategoryServiceImp implements CategoryService {
         this.fileStorageService = fileStorageService;
     }
 
+    // Storefront reads (shop/category nav) hit these constantly and category
+    // trees barely ever change, so they're cached in Redis; every write below
+    // evicts the whole "categories" cache region rather than trying to guess
+    // which keys a given edit could affect (e.g. re-parenting invalidates both
+    // the old and new parent's "children" list).
     @Override
+    @Cacheable(value = "categories", key = "'all'")
     public List<CategoryResponseDTO> getAllCategories() {
         return categoryRepository.findAll().stream()
                 .map(categoryMapper::toResponseDTO)
@@ -51,6 +59,7 @@ public class CategoryServiceImp implements CategoryService {
     }
 
     @Override
+    @Cacheable(value = "categories", key = "'byId:' + #id")
     public CategoryResponseDTO getCategoryById(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục với id " + id));
@@ -58,6 +67,7 @@ public class CategoryServiceImp implements CategoryService {
     }
 
     @Override
+    @CacheEvict(value = "categories", allEntries = true)
     public CategoryResponseDTO create(CategoryRequestDTO dto, MultipartFile image) {
         if (categoryRepository.existsBySlug(dto.getSlug())) {
             throw new ConflictException("Slug đã tồn tại, vui lòng chọn slug khác");
@@ -83,6 +93,7 @@ public class CategoryServiceImp implements CategoryService {
     }
 
     @Override
+    @CacheEvict(value = "categories", allEntries = true)
     public CategoryResponseDTO update(Long id, CategoryRequestDTO dto, MultipartFile image) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục với id " + id));
@@ -112,6 +123,7 @@ public class CategoryServiceImp implements CategoryService {
     }
 
     @Override
+    @CacheEvict(value = "categories", allEntries = true)
     public void delete(Long id) {
         if (!categoryRepository.existsById(id)) {
             throw new ResourceNotFoundException("Không tìm thấy danh mục với id " + id);
@@ -121,6 +133,7 @@ public class CategoryServiceImp implements CategoryService {
     }
 
     @Override
+    @Cacheable(value = "categories", key = "'root'")
     public List<CategoryResponseDTO> getRootCategories() {
         return categoryRepository.findByParentIsNullOrderBySortOrderAsc().stream()
                 .map(categoryMapper::toResponseDTO)
@@ -128,6 +141,7 @@ public class CategoryServiceImp implements CategoryService {
     }
 
     @Override
+    @Cacheable(value = "categories", key = "'children:' + #parentId")
     public List<CategoryResponseDTO> getChildren(Long parentId) {
         return categoryRepository.findByParent_IdOrderBySortOrderAsc(parentId).stream()
                 .map(categoryMapper::toResponseDTO)
