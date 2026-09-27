@@ -2,12 +2,12 @@ name: Backend CI
 
 on:
   push:
-    branches: [main, v1]
+    branches: [main, dev]
     paths:
       - "MoCeramicShop/**"
       - ".github/workflows/backend-ci.yml"
   pull_request:
-    branches: [main, v1]
+    branches: [main, dev]
     paths:
       - "MoCeramicShop/**"
       - ".github/workflows/backend-ci.yml"
